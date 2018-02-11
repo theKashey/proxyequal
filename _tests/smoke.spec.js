@@ -21,6 +21,7 @@ describe('proxy', () => {
 
 
     trapped.state[0] += 0;
+    trapped.state[0] += 0;
 
     expect(trapped.affected).to.be.deep.equal(['.0']);
 
@@ -66,6 +67,7 @@ describe('proxy', () => {
     expect(proxyShallow(A1, A2, trapped.affected)).to.be.true;
     expect(proxyShallow(A1, A3, trapped.affected)).to.be.true;
 
+    trapped.state.key1 += 0;
     trapped.state.key1 += 0;
     expect(trapped.affected).to.be.deep.equal(['.key1']);
 
