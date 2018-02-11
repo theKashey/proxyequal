@@ -45,7 +45,8 @@ describe('proxy', () => {
       key1: 1,
       key2: {
         array: [1, 2, 4]
-      }
+      },
+      key3: null
     };
     const A2 = {
       key1: 1,

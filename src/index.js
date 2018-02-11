@@ -1,6 +1,9 @@
 import buildTrie from 'search-trie';
 
 function proxyfy(state, report, suffix = '') {
+  if (!state) {
+    return state;
+  }
   return new Proxy(state, {
 
     get(target, prop) {
