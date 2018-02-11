@@ -1,0 +1,37 @@
+declare module 'proxyequal' {
+
+    /**
+     * Wraps state with traps
+     * @param {T} The state object
+     * @return {{state: T; affected: string[]}}
+     */
+    export function proxyState<T>(state: T) : {
+        state: T,
+        affected: string[]
+    }
+
+    /**
+     * Test is left equal to the right on variable-value level
+     * @param {T} left Object 1
+     * @param {T} right Object 2
+     * @param {string[]} affected, list of affected keys to compare
+     * @return {boolean}
+     * @example
+     *  proxyEqual({a:1,b:2},{a:1,c:2},['.a']) => true
+     *  proxyShallow({a:1,b:2},{a:1,c:2},['.a']) => false
+     */
+    export function proxyEqual<T>(left: T, right: T, affected: string[]): boolean;
+
+    /**
+     * Test is left `shallow` equal to the right on object-instance level
+     * @param {T} left Object 1
+     * @param {T} right Object 2
+     * @param {string[]} affected, list of affected keys to compare
+     * @return {boolean}
+     * @example
+     * const A = {}
+     * proxyEqual({a:A,b:2},{a:A,c:2},['.a']) => true
+     * proxyShallow({a:A,b:2},{a:A,c:2},['.a']) => true
+     */
+    export function proxyShallow<T>(left: T, right: T, affected: string[]): boolean;
+}
