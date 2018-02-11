@@ -91,4 +91,20 @@ describe('proxy', () => {
     expect(proxyShallow(A1, A4, trapped.affected)).to.be.false;
     expect(drainDifference()).to.be.deep.equal([['.key2', 'differs', A1.key2, A4.key2]]);
   });
+
+  it('handles freezed objects', () => {
+    const O1 = {
+      a: 1,
+      b: 2,
+      c: {d: 4}
+    };
+    const O2 = Object.freeze(O1);
+
+    const trapped = proxyState(O2);
+    const state = trapped.state;
+    const read = state.a + state.b + state.c.d;
+    expect(read).to.be.equal(7);
+    expect(trapped.affected).to.be.deep.equal(['.a', '.b', '.c', '.c.d']);
+
+  })
 });

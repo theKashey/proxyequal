@@ -4,8 +4,7 @@ function proxyfy(state, report, suffix = '') {
   if (!state) {
     return state;
   }
-  return new Proxy(state, {
-
+  return new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
     get(target, prop) {
       const value = Reflect.get(target, prop);
       if (typeof prop === 'string') {
@@ -17,9 +16,8 @@ function proxyfy(state, report, suffix = '') {
         if (type === 'object' || type === 'array') {
           return proxyfy(value, report, thisId)
         }
-
-        return value;
       }
+      return value;
     }
   })
 }
