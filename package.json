@@ -1,6 +1,6 @@
 {
   "name": "proxyequal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A better shallowequal, much better",
   "main": "lib/index.js",
   "types": "proxyqual.d.ts",
