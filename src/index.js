@@ -88,6 +88,7 @@ export {
   proxyEqual,
   proxyShallow,
   proxyState,
+  proxyCompare,
 
   collectShallows,
   collectValuables
