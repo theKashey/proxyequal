@@ -1,11 +1,16 @@
 import buildTrie from 'search-trie';
 
+const deproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deproxy') : '__magic__deproxySymbol';
+
 function proxyfy(state, report, suffix = '') {
   if (!state) {
     return state;
   }
   return new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
     get(target, prop) {
+      if (prop === deproxySymbol) {
+        return target;
+      }
       const value = Reflect.get(target, prop);
       if (typeof prop === 'string') {
         const thisId = suffix + '.' + prop;
@@ -64,7 +69,6 @@ const proxyCompare = (a, b, locations) => {
 const proxyEqual = (a, b, affected) => proxyCompare(a, b, collectValuables(affected));
 const proxyShallow = (a, b, affected) => proxyCompare(a, b, collectShallows(affected));
 
-
 const proxyState = (state) => {
   let affected = [];
   let set = new Set();
@@ -85,11 +89,22 @@ const proxyState = (state) => {
   }
 };
 
+const deproxify = (object) => {
+  const type = typeof object;
+  if (object && type === 'object') {
+    return object[deproxySymbol] || object;
+  }
+  return object;
+}
+
 export {
   proxyEqual,
   proxyShallow,
   proxyState,
   proxyCompare,
+
+  get,
+  deproxify,
 
   collectShallows,
   collectValuables

@@ -2,7 +2,7 @@ declare module 'proxyequal' {
 
     /**
      * Wraps state with traps
-     * @param {T} The state object
+     * @param {T} state - the "state" object
      * @return {{state: T; affected: string[]}}
      */
     export function proxyState<T>(state: T) : {
@@ -34,4 +34,11 @@ declare module 'proxyequal' {
      * proxyShallow({a:A,b:2},{a:A,c:2},['.a']) => true
      */
     export function proxyShallow<T>(left: T, right: T, affected: string[]): boolean;
+
+    /**
+     * de-proxifies object
+     * @param {T} source
+     * @return {T}
+     */
+    export function deproxify<T>(source: T): T;
 }
