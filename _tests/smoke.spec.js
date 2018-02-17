@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 
-import {proxyState, proxyShallow, proxyEqual, drainDifference} from '../src/index';
+import {proxyState, proxyShallow, proxyEqual, drainDifference, deproxify, isProxyfied} from '../src/index';
 
 describe('proxy', () => {
   it('arrays', () => {
@@ -106,5 +106,15 @@ describe('proxy', () => {
     expect(read).to.be.equal(7);
     expect(trapped.affected).to.be.deep.equal(['.a', '.b', '.c', '.c.d']);
 
-  })
+  });
+
+  it('detect self', () => {
+    const A = {a:1};
+    const B = proxyState(A).state;
+    const C = deproxify(B);
+
+    expect(isProxyfied(A)).to.be.false;
+    expect(isProxyfied(B)).to.be.true;
+    expect(isProxyfied(C)).to.be.false;
+  });
 });

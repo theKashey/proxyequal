@@ -89,9 +89,11 @@ const proxyState = (state) => {
   }
 };
 
+const isProxyfied = object =>
+  object && typeof object === 'object' ? Boolean(object[deproxySymbol]) : false;
+
 const deproxify = (object) => {
-  const type = typeof object;
-  if (object && type === 'object') {
+  if (object && typeof object === 'object') {
     return object[deproxySymbol] || object;
   }
   return object;
@@ -105,6 +107,7 @@ export {
 
   get,
   deproxify,
+  isProxyfied,
 
   collectShallows,
   collectValuables
