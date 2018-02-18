@@ -3,7 +3,7 @@ import buildTrie from 'search-trie';
 const deproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deproxy') : '__magic__deproxySymbol';
 const proxyKeySymbol = typeof Symbol !== 'undefined' ? Symbol('proxyKey') : '__magic__proxyKeySymbol';
 
-function proxyfy(state, report, suffix = '') {
+function proxyfy(state, report, suffix = '', fingerPrint) {
   if (!state) {
     return state;
   }
@@ -13,7 +13,10 @@ function proxyfy(state, report, suffix = '') {
         return target;
       }
       if (prop === proxyKeySymbol) {
-        return suffix;
+        return {
+          suffix,
+          fingerPrint
+        };
       }
       const value = Reflect.get(target, prop);
       if (typeof prop === 'string') {
@@ -23,7 +26,7 @@ function proxyfy(state, report, suffix = '') {
         report(thisId);
 
         if (type === 'object' || type === 'array') {
-          return proxyfy(value, report, thisId)
+          return proxyfy(value, report, thisId, fingerPrint)
         }
       }
       return value;
@@ -73,7 +76,7 @@ const proxyCompare = (a, b, locations) => {
 const proxyEqual = (a, b, affected) => proxyCompare(a, b, collectValuables(affected));
 const proxyShallow = (a, b, affected) => proxyCompare(a, b, collectShallows(affected));
 
-const proxyState = (state) => {
+const proxyState = (state, fingerPrint='') => {
   let affected = [];
   let set = new Set();
   const newState = proxyfy(state, key => {
@@ -81,7 +84,7 @@ const proxyState = (state) => {
       set.add(key);
       affected.push(key)
     }
-  });
+  }, '', fingerPrint);
 
   return {
     state: newState,
@@ -103,7 +106,7 @@ const deproxify = (object) => {
   return object;
 };
 
-const getProxyKey = object => object && typeof object === 'object' ? object[proxyKeySymbol] : undefined;
+const getProxyKey = object => object && typeof object === 'object' ? object[proxyKeySymbol] : {};
 
 export {
   proxyEqual,

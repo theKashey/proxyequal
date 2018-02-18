@@ -110,11 +110,12 @@ describe('proxy', () => {
 
   it('should return proxy name', () => {
     var A = {a: {b: {c: 1}}};
-    var P = proxyState(A).state;
+    var P = proxyState(A, 'key1').state;
     expect(P.a.b).to.be.deep.equal({c:1})
-    expect(getProxyKey(P.a)).to.be.equal('.a');
-    expect(getProxyKey(P.a.b)).to.be.equal('.a.b');
-    expect(getProxyKey(P.a.b.c)).to.be.equal(undefined);
+    expect(getProxyKey(P.a).fingerPrint).to.be.equal('key1');
+    expect(getProxyKey(P.a).suffix).to.be.equal('.a');
+    expect(getProxyKey(P.a.b).suffix).to.be.equal('.a.b');
+    expect(getProxyKey(P.a.b.c).suffix).to.be.equal(undefined);
   })
 
   it('detect self', () => {
