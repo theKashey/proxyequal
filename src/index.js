@@ -1,6 +1,7 @@
 import buildTrie from 'search-trie';
 
 const deproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deproxy') : '__magic__deproxySymbol';
+const proxyKeySymbol = typeof Symbol !== 'undefined' ? Symbol('proxyKey') : '__magic__proxyKeySymbol';
 
 function proxyfy(state, report, suffix = '') {
   if (!state) {
@@ -10,6 +11,9 @@ function proxyfy(state, report, suffix = '') {
     get(target, prop) {
       if (prop === deproxySymbol) {
         return target;
+      }
+      if (prop === proxyKeySymbol) {
+        return suffix;
       }
       const value = Reflect.get(target, prop);
       if (typeof prop === 'string') {
@@ -97,7 +101,9 @@ const deproxify = (object) => {
     return object[deproxySymbol] || object;
   }
   return object;
-}
+};
+
+const getProxyKey = object => object && typeof object === 'object' ? object[proxyKeySymbol] : undefined;
 
 export {
   proxyEqual,
@@ -108,6 +114,7 @@ export {
   get,
   deproxify,
   isProxyfied,
+  getProxyKey,
 
   collectShallows,
   collectValuables
