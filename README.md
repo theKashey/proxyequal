@@ -1,5 +1,7 @@
 proxyequal
 =====
+[![CircleCI status](https://img.shields.io/circleci/project/github/theKashey/proxyequal/master.svg?style=flat-square)](https://circleci.com/gh/theKashey/proxyequal/tree/master)
+
 Shallow equal is a good thing, but it compares thing you dont need
 
 Proxy equal - "MobX"-like solution, which will "magically" compare only used keys.
