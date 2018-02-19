@@ -3,14 +3,29 @@ import buildTrie from 'search-trie';
 const deproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deproxy') : '__magic__deproxySymbol';
 const proxyKeySymbol = typeof Symbol !== 'undefined' ? Symbol('proxyKey') : '__magic__proxyKeySymbol';
 
-function proxyfy(state, report, suffix = '', fingerPrint) {
+const isProxyfied = object =>
+  object && typeof object === 'object' ? Boolean(object[deproxySymbol]) : false;
+
+const deproxify = (object) => {
+  if (object && typeof object === 'object') {
+    return object[deproxySymbol] || object;
+  }
+  return object;
+};
+
+const getProxyKey = object => object && typeof object === 'object' ? object[proxyKeySymbol] : {};
+
+function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!state) {
     return state;
   }
-  return new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
+  if (ProxyMap.has(state)) {
+    return ProxyMap.get(state)
+  }
+  const proxy = new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
     get(target, prop) {
       if (prop === deproxySymbol) {
-        return target;
+        return deproxify(state);
       }
       if (prop === proxyKeySymbol) {
         return {
@@ -25,13 +40,15 @@ function proxyfy(state, report, suffix = '', fingerPrint) {
 
         report(thisId);
 
-        if (type === 'object' || type === 'array') {
-          return proxyfy(value, report, thisId, fingerPrint)
+        if (type === 'object') {
+          return proxyfy(value, report, thisId, fingerPrint, ProxyMap)
         }
       }
       return value;
     }
-  })
+  });
+  ProxyMap.set(state, proxy);
+  return proxy;
 }
 
 const collectValuables = lines => {
@@ -63,8 +80,8 @@ export const drainDifference = () => {
 const proxyCompare = (a, b, locations) => {
   for (const key of locations) {
     const path = key.split('.');
-    const la = get(a, path);
-    const lb = get(b, path);
+    const la = deproxify(get(a, path));
+    const lb = deproxify(get(b, path));
     if (la !== lb) {
       differs.push([key, 'differs', la, lb]);
       return false;
@@ -76,37 +93,33 @@ const proxyCompare = (a, b, locations) => {
 const proxyEqual = (a, b, affected) => proxyCompare(a, b, collectValuables(affected));
 const proxyShallow = (a, b, affected) => proxyCompare(a, b, collectShallows(affected));
 
-const proxyState = (state, fingerPrint='') => {
+const proxyState = (state, fingerPrint = '', _ProxyMap) => {
   let affected = [];
   let set = new Set();
-  const newState = proxyfy(state, key => {
+  let ProxyMap = _ProxyMap || new WeakMap();
+
+  const onKeyUse = key => {
     if (!set.has(key)) {
       set.add(key);
       affected.push(key)
     }
-  }, '', fingerPrint);
+  };
+  const createState = state => proxyfy(state, onKeyUse, '', fingerPrint, ProxyMap);
 
   return {
-    state: newState,
+    state: createState(state),
     affected: affected,
-    reset: () => {
+
+    replaceState(state) {
+      return proxyState(state, fingerPrint, ProxyMap);
+    },
+
+    reset() {
       affected.length = 0;
       set.clear();
     }
   }
 };
-
-const isProxyfied = object =>
-  object && typeof object === 'object' ? Boolean(object[deproxySymbol]) : false;
-
-const deproxify = (object) => {
-  if (object && typeof object === 'object') {
-    return object[deproxySymbol] || object;
-  }
-  return object;
-};
-
-const getProxyKey = object => object && typeof object === 'object' ? object[proxyKeySymbol] : {};
 
 export {
   proxyEqual,

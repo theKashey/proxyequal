@@ -47,6 +47,15 @@ Uses `ES6 Proxy` underneath to detect used branches(as `MobX`), and `search-trie
 
 So - it is lighting fast.
 
+## Limitations
+
+Unfortunately, due to Proxy wrappers all `objects` will be enique each run.
+```js
+ shallowEqual(proxyState(A), proxyState(A)) === false
+```
+There is a undocumented way to solve it, used internally in [memoize-state](https://github.com/theKashey/memoize-state) library.
+Once it will be proven to work stable - we will expose it.
+
 ## Compatibility
 
 __NOT__ compatible with __IE11__. One need to provide a proxy polyfill to make this work.

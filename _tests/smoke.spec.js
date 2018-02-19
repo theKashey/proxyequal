@@ -92,6 +92,42 @@ describe('proxy', () => {
     expect(drainDifference()).to.be.deep.equal([['.key2', 'differs', A1.key2, A4.key2]]);
   });
 
+  it('can proxy proxy', () => {
+    const A = {
+      b: {
+        c: {
+          d: 1
+        }
+      }
+    };
+    const p1 = proxyState(A);
+    const p2 = proxyState(p1.state.b);
+
+    expect(proxyEqual(p1.state, A, ['.b'])).to.be.true;
+    expect(proxyEqual(p1.state.b, A.b, ['.c'])).to.be.true;
+
+    expect(proxyEqual(p2.state, A.b, ['.c'])).to.be.true;
+  });
+
+  it('shallow equal test', () => {
+    const C = {c: 1};
+    const A1 = {
+      b: C
+    };
+    const A2 = {
+      b: C
+    };
+
+    expect(proxyState(A1).state.b).not.to.equal(proxyState(A2).state.b);
+
+    const p1 = proxyState(A1);
+    const s1 = p1.state;
+    const p2 = p1.replaceState(A2);
+    const s2 = p2.state;
+
+    expect(s1.b).to.equal(s2.b);
+  });
+
   it('handles freezed objects', () => {
     const O1 = {
       a: 1,
@@ -111,7 +147,7 @@ describe('proxy', () => {
   it('should return proxy name', () => {
     var A = {a: {b: {c: 1}}};
     var P = proxyState(A, 'key1').state;
-    expect(P.a.b).to.be.deep.equal({c:1})
+    expect(P.a.b).to.be.deep.equal({c: 1})
     expect(getProxyKey(P.a).fingerPrint).to.be.equal('key1');
     expect(getProxyKey(P.a).suffix).to.be.equal('.a');
     expect(getProxyKey(P.a.b).suffix).to.be.equal('.a.b');
