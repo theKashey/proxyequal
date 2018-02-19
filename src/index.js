@@ -19,9 +19,11 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!state) {
     return state;
   }
-  if (ProxyMap.has(state)) {
-    return ProxyMap.get(state)
+  const storedValue = ProxyMap.get(state) || {};
+  if (storedValue[suffix]) {
+    return storedValue[suffix];
   }
+  
   const proxy = new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
     get(target, prop) {
       if (prop === deproxySymbol) {
@@ -47,7 +49,8 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
       return value;
     }
   });
-  ProxyMap.set(state, proxy);
+  storedValue[suffix] = proxy;
+  ProxyMap.set(state, storedValue);
   return proxy;
 }
 
@@ -111,7 +114,8 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
     affected: affected,
 
     replaceState(state) {
-      return proxyState(state, fingerPrint, ProxyMap);
+      this.state = createState(state);
+      return this;
     },
 
     reset() {
