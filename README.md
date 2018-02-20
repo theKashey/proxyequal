@@ -6,7 +6,7 @@ Shallow equal is a good thing, but it compares thing you dont need
 
 Proxy equal - "MobX"-like solution, which will "magically" compare only used keys.
 
-Just 150 lines long.
+Just 150 lines long. 100% test coverage.
 
 [![NPM](https://nodei.co/npm/proxyequal.png?downloads=true&stars=true)](https://nodei.co/npm/proxyequal/)
 

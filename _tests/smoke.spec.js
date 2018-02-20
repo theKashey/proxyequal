@@ -92,6 +92,14 @@ describe('proxy', () => {
     expect(drainDifference()).to.be.deep.equal([['.key2', 'differs', A1.key2, A4.key2]]);
   });
 
+  it('handle empty case', () => {
+    const A = {
+      a: undefined
+    };
+    expect(proxyState(A).state.a).to.be.equal(undefined);
+    expect(proxyState(undefined).state).to.be.equal(undefined);
+  });
+
   it('can proxy proxy', () => {
     const A = {
       b: {

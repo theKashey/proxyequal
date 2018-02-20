@@ -23,7 +23,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (storedValue[suffix]) {
     return storedValue[suffix];
   }
-  
+
   const proxy = new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
     get(target, prop) {
       if (prop === deproxySymbol) {
