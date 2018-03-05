@@ -100,7 +100,7 @@ describe('proxy', () => {
     expect(proxyState(undefined).state).to.be.equal(undefined);
   });
 
-  it('can proxy proxy', () => {
+  it('can proxy via proxy', () => {
     const A = {
       b: {
         c: {
@@ -115,6 +115,39 @@ describe('proxy', () => {
     expect(proxyEqual(p1.state.b, A.b, ['.c'])).to.be.true;
 
     expect(proxyEqual(p2.state, A.b, ['.c'])).to.be.true;
+  });
+
+  it('track proxy via proxy', () => {
+    const A = {
+      root: {
+        b: {
+          a: 1,
+          b: true,
+          c: {
+            d: 1,
+            e: 14
+          }
+        }
+      }
+    };
+    const p0 = proxyState(A);
+    const p1 = proxyState(p0.state.root);
+    const p2 = proxyState(p1.state.b);
+    p2.state.c.d++;
+
+    expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d']);
+    expect(p2.affected).to.be.deep.equal(['.c', '.c.d']);
+    p2.state.a++;
+
+    expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d', '.b.a']);
+    expect(p2.affected).to.be.deep.equal(['.c', '.c.d', '.a']);
+
+    expect(proxyEqual(p2.state, A.root.b, ['.c.e'])).to.be.true;
+
+    expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d', '.b.a', '.b.c.e']);
+    expect(p2.affected).to.be.deep.equal(['.c', '.c.d', '.a', '.c.e']);
+
+    expect(p0.affected).to.be.deep.equal(['.root', '.root.b', '.root.b.c', '.root.b.c.d', '.root.b.a', '.root.b.c.e']);
   });
 
   it('shallow equal test', () => {

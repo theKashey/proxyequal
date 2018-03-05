@@ -1,5 +1,6 @@
 import buildTrie from 'search-trie';
 
+const deepDeproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deepDeproxy') : '__magic__deepDeproxySymbol';
 const deproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deproxy') : '__magic__deproxySymbol';
 const proxyKeySymbol = typeof Symbol !== 'undefined' ? Symbol('proxyKey') : '__magic__proxyKeySymbol';
 
@@ -9,6 +10,13 @@ const isProxyfied = object =>
 const deproxify = (object) => {
   if (object && typeof object === 'object') {
     return object[deproxySymbol] || object;
+  }
+  return object;
+};
+
+const deepDeproxify = (object) => {
+  if (object && typeof object === 'object') {
+    return object[deepDeproxySymbol] || object;
   }
   return object;
 };
@@ -24,10 +32,13 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
     return storedValue[suffix];
   }
 
-  const proxy = new Proxy(Array.isArray(state) ? state : Object.assign({}, state), {
+  const proxy = new Proxy((Array.isArray(state) || state[deproxySymbol]) ? state : Object.assign({}, state), {
     get(target, prop) {
       if (prop === deproxySymbol) {
-        return deproxify(state);
+        return state;
+      }
+      if(prop === deepDeproxySymbol){
+        return deepDeproxify(state);
       }
       if (prop === proxyKeySymbol) {
         return {
@@ -35,7 +46,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
           fingerPrint
         };
       }
-      const value = Reflect.get(target, prop);
+      const value = state[prop];
       if (typeof prop === 'string') {
         const thisId = suffix + '.' + prop;
         const type = typeof value;
@@ -83,8 +94,8 @@ export const drainDifference = () => {
 const proxyCompare = (a, b, locations) => {
   for (const key of locations) {
     const path = key.split('.');
-    const la = deproxify(get(a, path));
-    const lb = deproxify(get(b, path));
+    const la = deepDeproxify(get(a, path));
+    const lb = deepDeproxify(get(b, path));
     if (la !== lb) {
       differs.push([key, 'differs', la, lb]);
       return false;
