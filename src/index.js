@@ -104,6 +104,40 @@ const proxyCompare = (a, b, locations) => {
   return true;
 };
 
+const proxyShallowEqual = (a, b, locations) => {
+  const checkedPaths = new Map();
+  const results = new Map();
+
+  for (const key of locations) {
+    const prevKey = key.substr(0, key.lastIndexOf('.'));
+    if (checkedPaths.has(prevKey)) {
+      checkedPaths.set(key, true);
+      continue;
+    }
+
+    const path = key.split('.');
+    const la = deepDeproxify(get(a, path));
+    const lb = deepDeproxify(get(b, path));
+    const equal = la === lb;
+
+    results.delete(prevKey);
+    results.set(key, equal);
+    if (equal) {
+      checkedPaths.set(key, true);
+    }
+  }
+  
+  const tails = results.entries();
+  for(const [key,value] of tails){
+    if(!value){
+      differs.push([key, 'not equal']);
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const proxyEqual = (a, b, affected) => proxyCompare(a, b, collectValuables(affected));
 const proxyShallow = (a, b, affected) => proxyCompare(a, b, collectShallows(affected));
 
@@ -139,6 +173,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
 export {
   proxyEqual,
   proxyShallow,
+  proxyShallowEqual,
   proxyState,
   proxyCompare,
 

@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 
-import {proxyState, proxyShallow, proxyEqual, drainDifference, deproxify, isProxyfied, getProxyKey} from '../src/index';
+import {proxyState, proxyShallow, proxyShallowEqual, proxyEqual, drainDifference, deproxify, isProxyfied, getProxyKey} from '../src/index';
 
 describe('proxy', () => {
   it('arrays', () => {
@@ -98,6 +98,88 @@ describe('proxy', () => {
     };
     expect(proxyState(A).state.a).to.be.equal(undefined);
     expect(proxyState(undefined).state).to.be.equal(undefined);
+  });
+
+  it('plain shallowEqual', () => {
+    const A1 = {
+      key1: 1,
+      key2: {
+        array: [1, 2, 4]
+      },
+      key3: null
+    };
+    const A2 = {
+      key1: 1,
+      key2: 2
+    };
+    const A3 = Object.assign({}, A1, {
+      key1: 2,
+    });
+    const A4 = {
+      key1: 1,
+      key2: A1.key2
+    };
+
+    const trapped = proxyState(A1);
+    expect(trapped.affected).to.be.deep.equal([]);
+
+    expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.true;
+    expect(proxyShallowEqual(A1, A3, trapped.affected)).to.be.true;
+
+    trapped.state.key1 += 0;
+    trapped.state.key1 += 0;
+    expect(trapped.affected).to.be.deep.equal(['.key1']);
+
+    expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.true;
+    expect(proxyShallowEqual(A1, A3, trapped.affected)).to.be.false;
+    expect(drainDifference()).to.be.deep.equal([['.key1', 'not equal']]);
+
+    trapped.reset();
+    expect(trapped.affected).to.be.deep.equal([]);
+    trapped.state.key2.array[0] += 0;
+    expect(trapped.affected).to.be.deep.equal(['.key2', '.key2.array', '.key2.array.0']);
+
+    expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.false;
+    expect(drainDifference()).to.be.deep.equal([['.key2.array.0', 'not equal']]);
+
+    expect(proxyShallowEqual(A1, A4, trapped.affected)).to.be.true;
+  });
+
+  it('nested shallowEqual', () => {
+    const A1 = {
+      key1: 1,
+      key2: {
+        array: [1, 2, 4]
+      },
+      key3: null
+    };
+    const A2 = {
+      key1: 1,
+      key2: {
+        array: A1.key2.array
+      }
+    };
+
+    const trapped1 = proxyState(A1);
+    const trapped2 = proxyState(trapped1.state);
+
+    trapped2.state.key1 += 0;
+    expect(trapped1.affected).to.be.deep.equal(['.key1']);
+    expect(trapped2.affected).to.be.deep.equal(['.key1']);
+
+    expect(proxyShallowEqual(A1, A2, trapped1.affected)).to.be.true;
+    trapped2.state.key1 += 1;
+    expect(proxyShallowEqual(trapped2.state, A2, trapped1.affected)).to.be.true;
+    A1.key1 += 1;
+    expect(proxyShallowEqual(trapped2.state, A2, trapped1.affected)).to.be.false;
+    expect(drainDifference()).to.be.deep.equal([['.key1', 'not equal']]);
+
+    trapped1.reset();
+    trapped2.reset();
+    trapped2.state.key2.array[0] += 0;
+    expect(trapped1.affected).to.be.deep.equal(['.key2', '.key2.array', '.key2.array.0']);
+
+    expect(proxyShallowEqual(trapped2.state, A2, trapped1.affected)).to.be.true;
   });
 
   it('can proxy via proxy', () => {
