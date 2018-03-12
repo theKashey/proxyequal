@@ -23,11 +23,11 @@
   "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.26.0",
+    "babel-eslint": "^8.2.1",
     "babel-preset-env": "^1.6.1",
     "chai": "^4.1.2",
-    "mocha": "^4.0.1",
-    "babel-eslint": "^8.2.1",
-    "eslint": "^4.18.0"
+    "eslint": "^4.18.0",
+    "mocha": "^4.0.1"
   },
   "repository": {
     "type": "git",
@@ -38,6 +38,7 @@
   },
   "homepage": "https://github.com/theKashey/proxyequal#readme",
   "dependencies": {
-    "search-trie": "^1.0.0"
+    "search-trie": "^1.0.0",
+    "proxy-polyfill": "^0.2.0"
   }
 }

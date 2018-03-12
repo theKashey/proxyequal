@@ -285,5 +285,6 @@ describe('proxy', () => {
     expect(isProxyfied(A)).to.be.false;
     expect(isProxyfied(B)).to.be.true;
     expect(isProxyfied(C)).to.be.false;
+    expect(C).to.be.equal(A);
   });
 });

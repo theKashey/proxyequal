@@ -1,27 +1,27 @@
 import buildTrie from 'search-trie';
+import ProxyPolyfill from 'proxy-polyfill/src/proxy';
+const ProxyConstructor = typeof Proxy !== 'undefined' ? Proxy : ProxyPolyfill();
+//const ProxyConstructor = ProxyPolyfill(); // TESTS ONLY!
 
-const deepDeproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deepDeproxy') : '__magic__deepDeproxySymbol';
-const deproxySymbol = typeof Symbol !== 'undefined' ? Symbol('deproxy') : '__magic__deproxySymbol';
-const proxyKeySymbol = typeof Symbol !== 'undefined' ? Symbol('proxyKey') : '__magic__proxyKeySymbol';
+const ProxyToState = new WeakMap();
+const ProxyToFinderPrint = new WeakMap();
 
-const isProxyfied = object =>
-  object && typeof object === 'object' ? Boolean(object[deproxySymbol]) : false;
+const isProxyfied = object => object && typeof object === 'object' ? ProxyToState.has(object) : false;
 
-const deproxify = (object) => {
-  if (object && typeof object === 'object') {
-    return object[deproxySymbol] || object;
-  }
-  return object;
-};
+const deproxify = (object) => object && typeof object === 'object' ? ProxyToState.get(object) : object || object;
 
 const deepDeproxify = (object) => {
   if (object && typeof object === 'object') {
-    return object[deepDeproxySymbol] || object;
+    let current = object;
+    while (ProxyToState.has(current)) {
+      current = ProxyToState.get(current)
+    }
+    return current;
   }
   return object;
 };
 
-const getProxyKey = object => object && typeof object === 'object' ? object[proxyKeySymbol] : {};
+const getProxyKey = object => object && typeof object === 'object' ? ProxyToFinderPrint.get(object) : {};
 
 function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!state) {
@@ -32,20 +32,8 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
     return storedValue[suffix];
   }
 
-  const proxy = new Proxy((Array.isArray(state) || state[deproxySymbol]) ? state : Object.assign({}, state), {
+  const proxy = new ProxyConstructor((Array.isArray(state) || isProxyfied(state)) ? state : Object.assign({}, state), {
     get(target, prop) {
-      if (prop === deproxySymbol) {
-        return state;
-      }
-      if(prop === deepDeproxySymbol){
-        return deepDeproxify(state);
-      }
-      if (prop === proxyKeySymbol) {
-        return {
-          suffix,
-          fingerPrint
-        };
-      }
       const value = state[prop];
       if (typeof prop === 'string') {
         const thisId = suffix + '.' + prop;
@@ -62,6 +50,11 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   });
   storedValue[suffix] = proxy;
   ProxyMap.set(state, storedValue);
+  ProxyToState.set(proxy, state);
+  ProxyToFinderPrint.set(proxy, {
+    suffix,
+    fingerPrint
+  })
   return proxy;
 }
 
@@ -92,7 +85,8 @@ export const drainDifference = () => {
 };
 
 const proxyCompare = (a, b, locations) => {
-  for (const key of locations) {
+  for (let i = 0; i < locations.length; ++i) {
+    const key = locations[i];
     const path = key.split('.');
     const la = deepDeproxify(get(a, path));
     const lb = deepDeproxify(get(b, path));
@@ -108,7 +102,8 @@ const proxyShallowEqual = (a, b, locations) => {
   const checkedPaths = new Map();
   const results = new Map();
 
-  for (const key of locations) {
+  for (let i = 0; i < locations.length; ++i) {
+    const key = locations[i];
     const prevKey = key.substr(0, key.lastIndexOf('.'));
     if (checkedPaths.has(prevKey)) {
       checkedPaths.set(key, true);
@@ -126,11 +121,12 @@ const proxyShallowEqual = (a, b, locations) => {
       checkedPaths.set(key, true);
     }
   }
-  
+
   const tails = results.entries();
-  for(const [key,value] of tails){
-    if(!value){
-      differs.push([key, 'not equal']);
+  let pair;
+  while ((pair = tails.next().value)) {
+    if (!pair[1]) {
+      differs.push([pair[0], 'not equal']);
       return false;
     }
   }
