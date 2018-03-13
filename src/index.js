@@ -1,7 +1,13 @@
 import buildTrie from 'search-trie';
 import ProxyPolyfill from 'proxy-polyfill/src/proxy';
-const ProxyConstructor = typeof Proxy !== 'undefined' ? Proxy : ProxyPolyfill();
+
+const hasProxy = typeof Proxy !== 'undefined';
+const hasSymbol = typeof Symbol !== 'undefined';
+const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
 //const ProxyConstructor = ProxyPolyfill(); // TESTS ONLY!
+
+const spreadMarker = '!SPREAD';
+const __proxyequal_scanEnd = '__proxyequal_scanEnd';
 
 const ProxyToState = new WeakMap();
 const ProxyToFinderPrint = new WeakMap();
@@ -23,6 +29,12 @@ const deepDeproxify = (object) => {
 
 const getProxyKey = object => object && typeof object === 'object' ? ProxyToFinderPrint.get(object) : {};
 
+const prepareObject = state => {
+  const unfreezed = Object.assign({}, state);
+  return unfreezed;
+}
+
+
 function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!state) {
     return state;
@@ -32,20 +44,41 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
     return storedValue[suffix];
   }
 
-  const proxy = new ProxyConstructor((Array.isArray(state) || isProxyfied(state)) ? state : Object.assign({}, state), {
+  const theBaseObject = (Array.isArray(state) || isProxyfied(state)) ? state : prepareObject(state);
+
+  const proxy = new ProxyConstructor(theBaseObject, {
     get(target, prop) {
-      const value = state[prop];
+      if (prop === __proxyequal_scanEnd) {
+        report(spreadMarker);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('spread operation detected on', state);
+        }
+        return false;
+      }
+
+      const storedValue = state[prop];
       if (typeof prop === 'string') {
         const thisId = suffix + '.' + prop;
-        const type = typeof value;
+        const type = typeof storedValue;
 
         report(thisId);
 
         if (type === 'object') {
-          return proxyfy(value, report, thisId, fingerPrint, ProxyMap)
+          return proxyfy(storedValue, report, thisId, fingerPrint, ProxyMap)
         }
       }
-      return value;
+      return storedValue;
+    },
+    ownKeys() {
+      Object.defineProperty(theBaseObject, __proxyequal_scanEnd, {
+        value: 'this is secure guard',
+        configurable: true,
+        enumerable: true,
+      });
+      return [
+        ...Object.getOwnPropertyNames(state), ...Object.getOwnPropertySymbols(state),
+        __proxyequal_scanEnd
+      ]
     }
   });
   storedValue[suffix] = proxy;
@@ -141,11 +174,16 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
   let affected = [];
   let set = new Set();
   let ProxyMap = _ProxyMap || new WeakMap();
+  let spreadDetected = false;
 
   const onKeyUse = key => {
-    if (!set.has(key)) {
-      set.add(key);
-      affected.push(key)
+    if (key === spreadMarker) {
+      spreadDetected = true;
+    } else {
+      if (!set.has(key)) {
+        set.add(key);
+        affected.push(key)
+      }
     }
   };
   const createState = state => proxyfy(state, onKeyUse, '', fingerPrint, ProxyMap);
@@ -153,6 +191,9 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
   return {
     state: createState(state),
     affected: affected,
+    get spreadDetected() {
+      return spreadDetected;
+    },
 
     replaceState(state) {
       this.state = createState(state);
@@ -161,6 +202,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
 
     reset() {
       affected.length = 0;
+      spreadDetected = false;
       set.clear();
     }
   }

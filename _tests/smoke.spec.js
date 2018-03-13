@@ -1,6 +1,15 @@
 import {expect} from 'chai';
 
-import {proxyState, proxyShallow, proxyShallowEqual, proxyEqual, drainDifference, deproxify, isProxyfied, getProxyKey} from '../src/index';
+import {
+  proxyState,
+  proxyShallow,
+  proxyShallowEqual,
+  proxyEqual,
+  drainDifference,
+  deproxify,
+  isProxyfied,
+  getProxyKey
+} from '../src/index';
 
 describe('proxy', () => {
   it('arrays', () => {
@@ -268,13 +277,39 @@ describe('proxy', () => {
   });
 
   it('should return proxy name', () => {
-    var A = {a: {b: {c: 1}}};
-    var P = proxyState(A, 'key1').state;
-    expect(P.a.b).to.be.deep.equal({c: 1})
+    const A = {a: {b: {c: 1}}};
+    const P0 = proxyState(A, 'key1');
+    const P = P0.state;
+    expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
+    expect(P0.spreadDetected).to.be.false;
+    expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
+    expect(P0.spreadDetected).to.be.true;
     expect(getProxyKey(P.a).fingerPrint).to.be.equal('key1');
     expect(getProxyKey(P.a).suffix).to.be.equal('.a');
     expect(getProxyKey(P.a.b).suffix).to.be.equal('.a.b');
     expect(getProxyKey(P.a.b.c).suffix).to.be.equal(undefined);
+  });
+
+  it('stand spread operator(actually - not)', () => {
+    const A = {a: 1, b: 2, c: 3};
+    const f2 = state => state.b;
+    const f1 = (state) => f2(Object.assign({}, state));
+
+    var P = proxyState(A);
+    expect(f1(P.state)).to.be.equal(2);
+    expect(P.spreadDetected).to.be.true;
+    expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
+  })
+
+  it('stand rest operator(actually - not)', () => {
+    const A = {a: 1, b: 2, c: 3};
+    const f2 = state => state.b;
+    const f1 = ({a, ...state}) => f2(state);
+
+    var P = proxyState(A);
+    expect(f1(P.state)).to.be.equal(2);
+    expect(P.spreadDetected).to.be.true;
+    expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
   })
 
   it('detect self', () => {
