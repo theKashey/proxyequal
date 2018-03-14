@@ -1,5 +1,5 @@
 import buildTrie from 'search-trie';
-import ProxyPolyfill from 'proxy-polyfill/src/proxy';
+import ProxyPolyfill from './proxy-polyfill';
 
 const hasProxy = typeof Proxy !== 'undefined';
 const hasSymbol = typeof Symbol !== 'undefined';

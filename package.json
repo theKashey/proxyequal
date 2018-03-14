@@ -39,7 +39,6 @@
   },
   "homepage": "https://github.com/theKashey/proxyequal#readme",
   "dependencies": {
-    "proxy-polyfill": "^0.2.0",
     "search-trie": "^1.0.0"
   }
 }
