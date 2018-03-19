@@ -8,6 +8,7 @@ const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
 
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
+const spreadActivation = '__proxyequal_spreadActivation';
 
 const ProxyToState = new WeakMap();
 const ProxyToFinderPrint = new WeakMap();
@@ -49,10 +50,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   const proxy = new ProxyConstructor(theBaseObject, {
     get(target, prop) {
       if (prop === __proxyequal_scanEnd) {
-        report(spreadMarker);
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('spread operation detected on', state);
-        }
+        report(spreadMarker, suffix);
         return false;
       }
 
@@ -70,11 +68,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
       return storedValue;
     },
     ownKeys() {
-      Object.defineProperty(theBaseObject, __proxyequal_scanEnd, {
-        value: 'this is secure guard',
-        configurable: true,
-        enumerable: true,
-      });
+      report(spreadActivation, theBaseObject);
       return [
         ...Object.getOwnPropertyNames(state), ...Object.getOwnPropertySymbols(state),
         __proxyequal_scanEnd
@@ -175,10 +169,37 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
   let set = new Set();
   let ProxyMap = _ProxyMap || new WeakMap();
   let spreadDetected = false;
+  let speadActiveOn = [];
+  let sealed = false;
 
-  const onKeyUse = key => {
-    if (key === spreadMarker) {
-      spreadDetected = true;
+  const addSpreadTest = (location) => {
+    Object.defineProperty(location, __proxyequal_scanEnd, {
+      value: 'this is secure guard',
+      configurable: true,
+      enumerable: true,
+    });
+  };
+  const removeSpreadTest = () => {
+    speadActiveOn.forEach(target =>
+      Object.defineProperty(target, __proxyequal_scanEnd, {
+        value: 'here was spread guard',
+        configurable: true,
+        enumerable: false,
+      })
+    );
+    speadActiveOn = [];
+  };
+
+  const onKeyUse = (key, location) => {
+    if (sealed) {
+      return;
+    }
+    if (key === spreadActivation) {
+      addSpreadTest(location);
+      speadActiveOn.push(location);
+    }
+    else if (key === spreadMarker) {
+      spreadDetected = spreadDetected || location;
     } else {
       if (!set.has(key)) {
         set.add(key);
@@ -197,7 +218,18 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
 
     replaceState(state) {
       this.state = createState(state);
+      spreadDetected = false;
+      this.unseal();
       return this;
+    },
+
+    seal() {
+      sealed = true;
+      removeSpreadTest();
+    },
+
+    unseal() {
+      sealed = false;
     },
 
     reset() {

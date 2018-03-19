@@ -47,6 +47,14 @@ describe('proxy', () => {
     expect(proxyEqual(A1, A4, trapped.affected)).to.be.false;
 
     expect(drainDifference()).to.be.deep.equal([['.1', 'differs', 1, 2]]);
+
+    trapped.seal();
+    trapped.state[2] += 0;
+    expect(trapped.affected).to.be.deep.equal(['.0', '.1']);
+    trapped.unseal();
+
+    trapped.state[3] += 0;
+    expect(trapped.affected).to.be.deep.equal(['.0', '.1', '.3']);
   });
 
   it('objects', () => {
@@ -283,11 +291,23 @@ describe('proxy', () => {
     expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
     expect(P0.spreadDetected).to.be.false;
     expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
-    expect(P0.spreadDetected).to.be.true;
+    expect(P0.spreadDetected).to.be.equal(".a.b");
     expect(getProxyKey(P.a).fingerPrint).to.be.equal('key1');
     expect(getProxyKey(P.a).suffix).to.be.equal('.a');
     expect(getProxyKey(P.a.b).suffix).to.be.equal('.a.b');
     expect(getProxyKey(P.a.b.c).suffix).to.be.equal(undefined);
+  });
+
+  it('should properly handle seal command', () => {
+    const A = {a: {b: {c: 1}}};
+    const P0 = proxyState(A, 'key1');
+    const P = P0.state;
+    expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
+    expect(P0.spreadDetected).to.be.false;
+    expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
+    P0.seal();
+    expect(P.a.b).to.be.deep.equal({c: 1});
+    expect(P0.spreadDetected).to.be.equal(".a.b");
   });
 
   it('stand spread operator(actually - not)', () => {
@@ -297,7 +317,7 @@ describe('proxy', () => {
 
     var P = proxyState(A);
     expect(f1(P.state)).to.be.equal(2);
-    expect(P.spreadDetected).to.be.true;
+    expect(P.spreadDetected).to.be.equal("");
     expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
   })
 
@@ -308,7 +328,7 @@ describe('proxy', () => {
 
     var P = proxyState(A);
     expect(f1(P.state)).to.be.equal(2);
-    expect(P.spreadDetected).to.be.true;
+    expect(P.spreadDetected).to.be.equal("");
     expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
   })
 

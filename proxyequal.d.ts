@@ -1,5 +1,3 @@
-import {ProxyStateResult} from "proxyequal";
-
 declare module 'proxyequal' {
 
     interface ProxyStateResult<T> {

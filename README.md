@@ -13,6 +13,15 @@ Just 150 lines long. 100% test coverage.
 ## Usage
 * Wrap an object with `proxyState`
 * Run some computations using providing proxyObject.
+proxyState returns object with shape 
+  * state - a double of provided state, with _tracking_ enabled
+  * affected - list of used keys in a state.
+  * seal - disables tracking
+  * unseal - enabled tracking
+  * replaceState(newState) - replaces top level state, maintaing rest of data.
+  * reset - resets tracked keys
+   
+
 * `proxy` will collect all referenced or used keys
 * `proxyEqual` will compare all used "endpoint" keys of 2 objects
 * `proxyShallow` will comparent all used __NON__ "endpoint" keys of 2 objects.
@@ -43,6 +52,20 @@ proxyShallow(state, newState, trapped.affected);
 // next - deep compare
 proxyEqual(state, newState, trapped.affected);
 ```
+### Dont forget to disable
+```js
+const trapped = proxyState(state);
+// do something
+workWith(trapped.state);
+
+trapped.seal();
+
+// now tracking is disabled
+
+trapped.unseal();
+// and enabled
+```
+
 ## Speed
 
 Uses `ES6 Proxy` underneath to detect used branches(as `MobX`), and `search-trie` to filter out keys for shallow or equal compare.
