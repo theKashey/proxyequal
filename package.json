@@ -1,6 +1,6 @@
 {
   "name": "proxyequal",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "The other way to shallowequal",
   "main": "lib/index.js",
   "types": "proxyqual.d.ts",
