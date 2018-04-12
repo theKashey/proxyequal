@@ -46,8 +46,9 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   }
 
   const theBaseObject = (Array.isArray(state) || isProxyfied(state)) ? state : prepareObject(state);
+  const shouldHookOwnKeys = !isProxyfied(state);
 
-  const proxy = new ProxyConstructor(theBaseObject, {
+  const hooks = {
     get(target, prop) {
       if (prop === __proxyequal_scanEnd) {
         report(spreadMarker, suffix);
@@ -66,22 +67,28 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
         }
       }
       return storedValue;
-    },
-    ownKeys() {
-      report(spreadActivation, theBaseObject);
-      return [
-        ...Object.getOwnPropertyNames(state), ...Object.getOwnPropertySymbols(state),
-        __proxyequal_scanEnd
-      ]
     }
-  });
+  };
+
+  if (shouldHookOwnKeys) {
+    hooks['ownKeys'] = function () {
+      report(spreadActivation, theBaseObject);
+      return [].concat(
+        Object.getOwnPropertyNames(state),
+        Object.getOwnPropertySymbols(state),
+        __proxyequal_scanEnd
+      );
+    }
+  }
+
+  const proxy = new ProxyConstructor(theBaseObject, hooks);
   storedValue[suffix] = proxy;
   ProxyMap.set(state, storedValue);
   ProxyToState.set(proxy, state);
   ProxyToFinderPrint.set(proxy, {
     suffix,
     fingerPrint
-  })
+  });
   return proxy;
 }
 
