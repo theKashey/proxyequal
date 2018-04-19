@@ -31,9 +31,15 @@ const deepDeproxify = (object) => {
 const getProxyKey = object => object && typeof object === 'object' ? ProxyToFinderPrint.get(object) : {};
 
 const prepareObject = state => {
-  const unfreezed = Object.assign({}, state);
-  return unfreezed;
-}
+  // unfreeze
+  if (Array.isArray(state)) {
+    return state.slice(0);
+  } else {
+    return Object.assign({}, state);
+  }
+};
+
+const shouldProxy = type => type === 'object';
 
 
 function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
@@ -45,7 +51,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
     return storedValue[suffix];
   }
 
-  const theBaseObject = (Array.isArray(state) || isProxyfied(state)) ? state : prepareObject(state);
+  const theBaseObject = (isProxyfied(state)) ? state : prepareObject(state);
   const shouldHookOwnKeys = !isProxyfied(state);
 
   const hooks = {
@@ -62,7 +68,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
 
         report(thisId);
 
-        if (type === 'object') {
+        if (shouldProxy(type)) {
           return proxyfy(storedValue, report, thisId, fingerPrint, ProxyMap)
         }
       }
