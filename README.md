@@ -8,7 +8,7 @@ Proxy equal - "MobX"-like solution, which will "magically" compare only used key
 
 Just 150 lines long. 100% test coverage.
 
-[![NPM](https://nodei.co/npm/proxyequal.png?downloads=true&stars=true)](https://nodei.co/npm/proxyequal/)
+[![NPM](https://nodei.co/npm/proxyequal.png?downloads=true&stars=true)](https://nodei.co/npm/proxyequal/) [![Greenkeeper badge](https://badges.greenkeeper.io/theKashey/proxyequal.svg)](https://greenkeeper.io/)
 
 ## Usage
 * Wrap an object with `proxyState`
