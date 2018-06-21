@@ -1,10 +1,9 @@
 import buildTrie from 'search-trie';
 import ProxyPolyfill from './proxy-polyfill';
+import {shouldInstrument} from "./shouldInstrument";
 
 const hasProxy = typeof Proxy !== 'undefined';
-const hasSymbol = typeof Symbol !== 'undefined';
 const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
-//const ProxyConstructor = ProxyPolyfill(); // TESTS ONLY!
 
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
@@ -34,9 +33,13 @@ const prepareObject = state => {
   // unfreeze
   if (Array.isArray(state)) {
     return state.slice(0);
-  } else {
-    return Object.assign({}, state);
   }
+  if (state.constructor.name === 'Object') {
+    const clone = Object.assign({}, state);
+    Object.setPrototypeOf(clone, Object.getPrototypeOf(state));
+    return clone;
+  }
+  return state;
 };
 
 const shouldProxy = type => type === 'object';
@@ -46,12 +49,18 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!state) {
     return state;
   }
+  const alreadyProxy = isProxyfied(state);
+
+  if(!alreadyProxy && !shouldInstrument(state)){
+    return state;
+  }
+
   const storedValue = ProxyMap.get(state) || {};
   if (storedValue[suffix]) {
     return storedValue[suffix];
   }
 
-  const theBaseObject = (isProxyfied(state)) ? state : prepareObject(state);
+  const theBaseObject = alreadyProxy ? state : prepareObject(state);
   const shouldHookOwnKeys = !isProxyfied(state);
 
   const hooks = {

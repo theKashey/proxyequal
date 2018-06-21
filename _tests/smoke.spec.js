@@ -342,4 +342,12 @@ describe('proxy', () => {
     expect(isProxyfied(C)).to.be.false;
     expect(C).to.be.equal(A);
   });
+
+  describe('types', () => {
+    it('should handle date', () => {
+      const A = { d:new Date()};
+      const B = proxyState(A).state;
+      expect(B.d.getDate()).to.be.equal((new Date()).getDate())
+    })
+  });
 });

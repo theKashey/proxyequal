@@ -107,12 +107,7 @@ export default function proxyPolyfill() {
     };
     const setter = handler.set ? function(prop, value) {
       throwRevoked('set');
-      const status = handler.set(this, prop, value, proxy);
-      // TODO(samthor): If the calling code is in strict mode, throw TypeError.
-      // if (!status) {
-      // It's (sometimes) possible to work this out, if this code isn't strict- try to load the
-      // callee, and if it's available, that code is non-strict. However, this isn't exhaustive.
-      // }
+      handler.set(this, prop, value, proxy);
     } : function(prop, value) {
       throwRevoked('set');
       this[prop] = value;
