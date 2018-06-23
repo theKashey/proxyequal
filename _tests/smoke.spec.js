@@ -8,7 +8,8 @@ import {
   drainDifference,
   deproxify,
   isProxyfied,
-  getProxyKey
+  getProxyKey,
+  spreadGuardsEnabled
 } from '../src/index';
 
 describe('proxy', () => {
@@ -345,9 +346,75 @@ describe('proxy', () => {
 
   describe('types', () => {
     it('should handle date', () => {
-      const A = { d:new Date()};
-      const B = proxyState(A).state;
+      const A = {d: new Date()};
+      const p = proxyState(A);
+      const B = p.state;
       expect(B.d.getDate()).to.be.equal((new Date()).getDate())
+      expect(p.affected).to.be.deep.equal(['.d'])
+    })
+
+    it('should handle Promise', () => {
+      const A = {d: Promise.resolve()};
+      const p = proxyState(A);
+      const B = p.state;
+      const result = B.d.then(() => true);
+      expect(p.affected).to.be.deep.equal(['.d'])
+      return result;
+    })
+
+    it('should handle Map.get', () => {
+      const A = {d: new Map([[1, 2]])};
+      const p = proxyState(A);
+      const B = p.state;
+      expect(B.d.get(1)).to.be.equal(2);
+      expect(p.affected).to.be.deep.equal(['.d', '.d.get', '.d.1']);
+    })
+
+    it('should handle Map.keys', () => {
+      const A = {d: new Map([['key', 'value']])};
+      const p = proxyState(A);
+      const B = p.state;
+      expect([...B.d.keys()]).to.be.deep.equal([...A.d.keys()]);
+      expect(p.affected).to.be.deep.equal(['.d', '.d.keys']);
+    })
+
+    it('should handle Map.values', () => {
+      const A = {d: new Map([[1, 2]])};
+      const p = proxyState(A);
+      const B = p.state;
+      expect([...B.d.values()]).to.be.deep.equal([...A.d.values()]);
+      expect(p.affected).to.be.deep.equal(['.d', '.d.values', '.d.values.0']);
+    })
+
+    it('should handle Map.entries', () => {
+      spreadGuardsEnabled(false);
+      const A = {d: new Map([[1, {sub1: 1, sub2: 2}]])};
+      const p = proxyState(A);
+      const B = p.state;
+
+      expect(B.d.entries().next().value[1].sub2).to.be.equal(2);
+      expect(p.affected).to.be.deep.equal([
+        '.d',
+        '.d.entries',
+        ".d.entries.0",
+        ".d.entries.0.1",
+        ".d.entries.0.1.sub2",
+      ]);
+
+      expect([...B.d.entries()]).to.be.deep.equal([...A.d.entries()]);
+      expect(p.affected).to.be.deep.equal([
+        ".d",
+        ".d.entries",
+        ".d.entries.0",
+        ".d.entries.0.1",
+        ".d.entries.0.1.sub2",
+        ".d.entries.0.length",
+        ".d.entries.0.0",
+        ".d.entries.0.1.sub1",
+      ]);
+
+
+      spreadGuardsEnabled(true);
     })
   });
 });

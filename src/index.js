@@ -1,6 +1,6 @@
 import buildTrie from 'search-trie';
 import ProxyPolyfill from './proxy-polyfill';
-import {shouldInstrument} from "./shouldInstrument";
+import {getCollectionHandlers, shouldInstrument} from "./shouldInstrument";
 
 const hasProxy = typeof Proxy !== 'undefined';
 const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
@@ -8,6 +8,10 @@ const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
 const spreadActivation = '__proxyequal_spreadActivation';
+
+let isSpreadGuardsEnabled = true;
+
+export const spreadGuardsEnabled = (flag) => (isSpreadGuardsEnabled=flag);
 
 const ProxyToState = new WeakMap();
 const ProxyToFinderPrint = new WeakMap();
@@ -51,9 +55,11 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   }
   const alreadyProxy = isProxyfied(state);
 
-  if(!alreadyProxy && !shouldInstrument(state)){
+  if (!alreadyProxy && !shouldInstrument(state)) {
     return state;
   }
+
+  const hasCollectionHandlers = !alreadyProxy && getCollectionHandlers(state);
 
   const storedValue = ProxyMap.get(state) || {};
   if (storedValue[suffix]) {
@@ -61,7 +67,61 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   }
 
   const theBaseObject = alreadyProxy ? state : prepareObject(state);
-  const shouldHookOwnKeys = !isProxyfied(state);
+  const shouldHookOwnKeys = isSpreadGuardsEnabled && !isProxyfied(state);
+
+  const iterable = (key, iterator) => {
+    let index = 0;
+    const next = ()  => {
+      const nextItem = iterator.next();
+      const subKey = key + '.' + index
+      index++;
+      return {
+        ...nextItem,
+        get value() {
+          if(nextItem.done && !nextItem.value){
+            return;
+          }
+          return proxyValue(subKey, nextItem.value)
+        }
+      };
+    }
+    return {
+      [Symbol.iterator]: () => ({
+        next
+      }),
+      next
+    }
+  };
+
+  const proxyValue = (key, value) => {
+    const thisId = suffix + '.' + key;
+    const type = typeof value;
+
+    report(thisId);
+
+    if (shouldProxy(type)) {
+      return proxyfy(value, report, thisId, fingerPrint, ProxyMap)
+    }
+
+    if (hasCollectionHandlers) {
+      switch (key) {
+        case 'get':
+          return key => proxyValue(key, state.get(key));
+        case 'has':
+          return key => proxyValue(key, state.has(key));
+        case 'keys':
+          return () => state.keys();
+        case 'values':
+          return () => iterable(key, state.values());
+        case 'entries':
+          return () => iterable(key, state.entries());
+        case [Symbol.iterator]:
+          return iterable(key, state[Symbol.iterator]);
+      }
+    }
+
+    return value;
+  };
 
   const hooks = {
     get(target, prop) {
@@ -72,15 +132,9 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
 
       const storedValue = state[prop];
       if (typeof prop === 'string') {
-        const thisId = suffix + '.' + prop;
-        const type = typeof storedValue;
-
-        report(thisId);
-
-        if (shouldProxy(type)) {
-          return proxyfy(storedValue, report, thisId, fingerPrint, ProxyMap)
-        }
+        return proxyValue(prop, storedValue);
       }
+
       return storedValue;
     }
   };

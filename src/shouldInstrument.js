@@ -4,7 +4,16 @@
 // their methods expect the object instance as the 'this' instead of the Proxy wrapper
 // complex objects are wrapped with a Proxy of instrumented methods
 // which switch the proxy to the raw object and to add reactive wiring
-const collectionHandlers = false;
+const collectionHandlers = {
+  get: true,
+  has: true,
+  forEach: true,
+  keys: true,
+  values: true,
+  entries: true,
+  size: true,
+  [Symbol.iterator]: true
+};
 
 const handlers = new Map([
   [Map, collectionHandlers],
@@ -36,3 +45,7 @@ export function shouldInstrument({constructor}) {
   );
   return !isBuiltIn || handlers.has(constructor);
 }
+
+export const getCollectionHandlers = ({constructor}) => (
+  handlers.get(constructor)
+)
