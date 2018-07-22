@@ -31,6 +31,10 @@ The difference between proxyEqual and proxyShallow is in _expectations_.
 * proxyShallow is similar to `shallowEqual`, it compares the top level objects. Might be they are still the same.
 * proxyEqual working on variable-value level, performing (very) deep comparison of objects. 
 
+## Extra API
+- `spreadGuardsEnabled(boolean=[true])` - controls spread guards, or all-keys-enumeration, which makes proxyEqual ineffective.
+- `sourceMutationsEnabled(boolean=[false])` - controls set behavior. By default proxied state is frozen.
+
 ## When to use proxyequal
 When you have a big state, for example redux state, but some function (redux selector, or mapStateToProps)
 uses just a small subset.
