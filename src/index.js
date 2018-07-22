@@ -135,7 +135,9 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
         return true
       } else {
         console.error(
-          'Source object mutations are disabled, but you tried to change',
+          'Source object mutations are disabled, but you tried to set',
+          value,
+          'on key',
           thisId,
           'on',
           state
