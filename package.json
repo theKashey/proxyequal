@@ -7,6 +7,7 @@
   "scripts": {
     "test": "npm run test:pick -- '_tests/**/*spec.js'",
     "test:pick": "BABEL_ENV=cjs mocha --compilers js:babel-core/register",
+    "test:cov": "BABEL_ENV=cjs nyc mocha --compilers js:babel-core/register --report lcovonly -- '_tests/**/*spec.js'",
     "build": "babel src -d lib",
     "prepublish": "npm run build",
     "lint": "eslint src tests",
@@ -27,8 +28,10 @@
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "chai": "^4.1.2",
+    "codecov": "^3.0.4",
     "eslint": "^4.18.0",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "nyc": "^12.0.2"
   },
   "repository": {
     "type": "git",

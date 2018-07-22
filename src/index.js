@@ -8,10 +8,13 @@ const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
 const spreadActivation = '__proxyequal_spreadActivation';
+const sourceModification ='__proxyequal_sourceObjectMutations';
 
-let isSpreadGuardsEnabled = true;
+let areSpreadGuardsEnabled = true;
+let areSourceMutationsEnabled = false;
 
-export const spreadGuardsEnabled = (flag) => (isSpreadGuardsEnabled=flag);
+export const spreadGuardsEnabled = (flag) => (areSpreadGuardsEnabled=flag);
+export const sourceMutationsEnabled = (flag) => (areSourceMutationsEnabled=flag);
 
 const ProxyToState = new WeakMap();
 const ProxyToFinderPrint = new WeakMap();
@@ -67,7 +70,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   }
 
   const theBaseObject = alreadyProxy ? state : prepareObject(state);
-  const shouldHookOwnKeys = isSpreadGuardsEnabled && !isProxyfied(state);
+  const shouldHookOwnKeys = areSpreadGuardsEnabled && !isProxyfied(state);
 
   const iterable = (key, iterator) => {
     let index = 0;
@@ -84,7 +87,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
           return proxyValue(subKey, nextItem.value)
         }
       };
-    }
+    };
     return {
       [Symbol.iterator]: () => ({
         next
@@ -124,6 +127,23 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   };
 
   const hooks = {
+    set(target, prop, value) {
+      const thisId = suffix + '.' + prop;
+      if(areSourceMutationsEnabled){
+        state[prop] = value;
+        report(thisId);
+        return true
+      } else {
+        console.error(
+          'Source object mutations are disabled, but you tried to change',
+          thisId,
+          'on',
+          state
+        );
+        return false;
+      }
+    },
+
     get(target, prop) {
       if (prop === __proxyequal_scanEnd) {
         report(spreadMarker, suffix);

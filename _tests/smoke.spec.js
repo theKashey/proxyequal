@@ -9,8 +9,9 @@ import {
   deproxify,
   isProxyfied,
   getProxyKey,
-  spreadGuardsEnabled
-} from '../src/index';
+  spreadGuardsEnabled,
+  sourceMutationsEnabled
+} from '../src';
 
 describe('proxy', () => {
   it('arrays', () => {
@@ -30,8 +31,8 @@ describe('proxy', () => {
     expect(proxyEqual(A1, A4, trapped.affected)).to.be.true;
 
 
-    trapped.state[0] += 0;
-    trapped.state[0] += 0;
+    trapped.state[0];// += 0;
+    trapped.state[0];// += 0;
 
     expect(trapped.affected).to.be.deep.equal(['.0']);
 
@@ -39,7 +40,7 @@ describe('proxy', () => {
     expect(proxyEqual(A1, A3, trapped.affected)).to.be.true;
     expect(proxyEqual(A1, A4, trapped.affected)).to.be.true;
 
-    trapped.state[1] += 0;
+    trapped.state[1];// += 0;
 
     expect(trapped.affected).to.be.deep.equal(['.0', '.1']);
 
@@ -50,11 +51,11 @@ describe('proxy', () => {
     expect(drainDifference()).to.be.deep.equal([['.1', 'differs', 1, 2]]);
 
     trapped.seal();
-    trapped.state[2] += 0;
+    trapped.state[2];// += 0;
     expect(trapped.affected).to.be.deep.equal(['.0', '.1']);
     trapped.unseal();
 
-    trapped.state[3] += 0;
+    trapped.state[3];// += 0;
     expect(trapped.affected).to.be.deep.equal(['.0', '.1', '.3']);
   });
 
@@ -86,8 +87,8 @@ describe('proxy', () => {
     expect(proxyShallow(A1, A2, trapped.affected)).to.be.true;
     expect(proxyShallow(A1, A3, trapped.affected)).to.be.true;
 
-    trapped.state.key1 += 0;
-    trapped.state.key1 += 0;
+    trapped.state.key1;// += 0;
+    trapped.state.key1;// += 0;
     expect(trapped.affected).to.be.deep.equal(['.key1']);
 
     expect(proxyEqual(A1, A2, trapped.affected)).to.be.true;
@@ -96,7 +97,7 @@ describe('proxy', () => {
 
     trapped.reset();
     expect(trapped.affected).to.be.deep.equal([]);
-    trapped.state.key2.array[0] += 0;
+    trapped.state.key2.array[0];// += 0;
     expect(trapped.affected).to.be.deep.equal(['.key2', '.key2.array', '.key2.array.0']);
 
     expect(proxyEqual(A1, A2, trapped.affected)).to.be.false;
@@ -144,8 +145,8 @@ describe('proxy', () => {
     expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.true;
     expect(proxyShallowEqual(A1, A3, trapped.affected)).to.be.true;
 
-    trapped.state.key1 += 0;
-    trapped.state.key1 += 0;
+    trapped.state.key1;// += 0;
+    trapped.state.key1;/// += 0;
     expect(trapped.affected).to.be.deep.equal(['.key1']);
 
     expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.true;
@@ -154,7 +155,7 @@ describe('proxy', () => {
 
     trapped.reset();
     expect(trapped.affected).to.be.deep.equal([]);
-    trapped.state.key2.array[0] += 0;
+    trapped.state.key2.array[0];// += 0;
     expect(trapped.affected).to.be.deep.equal(['.key2', '.key2.array', '.key2.array.0']);
 
     expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.false;
@@ -181,12 +182,12 @@ describe('proxy', () => {
     const trapped1 = proxyState(A1);
     const trapped2 = proxyState(trapped1.state);
 
-    trapped2.state.key1 += 0;
+    trapped2.state.key1;// += 0;
     expect(trapped1.affected).to.be.deep.equal(['.key1']);
     expect(trapped2.affected).to.be.deep.equal(['.key1']);
 
     expect(proxyShallowEqual(A1, A2, trapped1.affected)).to.be.true;
-    trapped2.state.key1 += 1;
+    trapped2.state.key1;// += 1;
     expect(proxyShallowEqual(trapped2.state, A2, trapped1.affected)).to.be.true;
     A1.key1 += 1;
     expect(proxyShallowEqual(trapped2.state, A2, trapped1.affected)).to.be.false;
@@ -194,7 +195,7 @@ describe('proxy', () => {
 
     trapped1.reset();
     trapped2.reset();
-    trapped2.state.key2.array[0] += 0;
+    trapped2.state.key2.array[0];// += 0;
     expect(trapped1.affected).to.be.deep.equal(['.key2', '.key2.array', '.key2.array.0']);
 
     expect(proxyShallowEqual(trapped2.state, A2, trapped1.affected)).to.be.true;
@@ -233,11 +234,11 @@ describe('proxy', () => {
     const p0 = proxyState(A);
     const p1 = proxyState(p0.state.root);
     const p2 = proxyState(p1.state.b);
-    p2.state.c.d++;
+    p2.state.c.d;//++;
 
     expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d']);
     expect(p2.affected).to.be.deep.equal(['.c', '.c.d']);
-    p2.state.a++;
+    p2.state.a;//++;
 
     expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d', '.b.a']);
     expect(p2.affected).to.be.deep.equal(['.c', '.c.d', '.a']);
@@ -413,8 +414,34 @@ describe('proxy', () => {
         ".d.entries.0.1.sub1",
       ]);
 
-
       spreadGuardsEnabled(true);
     })
   });
+
+  describe('set', () => {
+    it('should not let you set value', () => {
+      const A = {a: 1, b: 2};
+      const p = proxyState(A);
+      const B = p.state;
+
+      expect(() => B.a = 2).to.throw();
+      expect(A.a).to.be.equal(1);
+      expect(B.a).to.be.equal(1);
+    });
+
+    it('should not let you set value', () => {
+      const A = {a: 1, b: 2};
+      const p = proxyState(A);
+      const B = p.state;
+
+      sourceMutationsEnabled(true);
+      expect(() => B.a = 2).not.to.throw();
+
+      expect(A.a).to.be.equal(2);
+      expect(B.a).to.be.equal(2);
+
+      sourceMutationsEnabled(false);
+      expect(() => B.a = 3).to.throw();
+    });
+  })
 });
