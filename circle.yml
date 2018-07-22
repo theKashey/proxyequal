@@ -5,4 +5,4 @@ machine:
 test:
 
   override:
-    - npm run test:ci && codecov
+    - npm run test:cov && codecov
