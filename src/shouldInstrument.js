@@ -35,7 +35,7 @@ const handlers = new Map([
 
 
 // eslint-disable-next-line
-const globalObj = Function("return this")();
+const globalObj = typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {};
 
 export function shouldInstrument({constructor}) {
   const isBuiltIn = (

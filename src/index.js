@@ -8,7 +8,6 @@ const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
 const spreadActivation = '__proxyequal_spreadActivation';
-const sourceModification ='__proxyequal_sourceObjectMutations';
 
 let areSpreadGuardsEnabled = true;
 let areSourceMutationsEnabled = false;
@@ -134,6 +133,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
         report(thisId);
         return true
       } else {
+        /* eslint-disable-next-line */
         console.error(
           'Source object mutations are disabled, but you tried to set',
           value,
