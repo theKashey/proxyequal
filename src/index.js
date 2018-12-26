@@ -9,11 +9,11 @@ const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
 const spreadActivation = '__proxyequal_spreadActivation';
 
-let areSpreadGuardsEnabled = true;
+let areSpreadGuardsEnabled = false;
 let areSourceMutationsEnabled = false;
 
-export const spreadGuardsEnabled = (flag) => (areSpreadGuardsEnabled=flag);
-export const sourceMutationsEnabled = (flag) => (areSourceMutationsEnabled=flag);
+export const spreadGuardsEnabled = (flag) => (areSpreadGuardsEnabled = flag);
+export const sourceMutationsEnabled = (flag) => (areSourceMutationsEnabled = flag);
 
 const ProxyToState = new WeakMap();
 const ProxyToFinderPrint = new WeakMap();
@@ -36,20 +36,21 @@ const deepDeproxify = (object) => {
 const getProxyKey = object => object && typeof object === 'object' ? ProxyToFinderPrint.get(object) : {};
 
 const prepareObject = state => {
-  // unfreeze
-  if (Array.isArray(state)) {
-    return state.slice(0);
-  }
-  if (state.constructor.name === 'Object') {
-    const clone = Object.assign({}, state);
-    Object.setPrototypeOf(clone, Object.getPrototypeOf(state));
-    return clone;
+  if (Object.isFrozen(state)) {
+    // unfreeze
+    if (Array.isArray(state)) {
+      return state.slice(0);
+    }
+    if (state.constructor.name === 'Object') {
+      const clone = Object.assign({}, state);
+      Object.setPrototypeOf(clone, Object.getPrototypeOf(state));
+      return clone;
+    }
   }
   return state;
 };
 
 const shouldProxy = type => type === 'object';
-
 
 function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!state) {
@@ -73,14 +74,14 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
 
   const iterable = (key, iterator) => {
     let index = 0;
-    const next = ()  => {
+    const next = () => {
       const nextItem = iterator.next();
-      const subKey = key + '.' + index
+      const subKey = key + '.' + index;
       index++;
       return {
         ...nextItem,
         get value() {
-          if(nextItem.done && !nextItem.value){
+          if (nextItem.done && !nextItem.value) {
             return;
           }
           return proxyValue(subKey, nextItem.value)
@@ -128,7 +129,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   const hooks = {
     set(target, prop, value) {
       const thisId = suffix + '.' + prop;
-      if(areSourceMutationsEnabled){
+      if (areSourceMutationsEnabled) {
         state[prop] = value;
         report(thisId);
         return true
@@ -158,17 +159,18 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
       }
 
       return storedValue;
-    }
+    },
   };
 
   if (shouldHookOwnKeys) {
     hooks['ownKeys'] = function () {
       report(spreadActivation, theBaseObject);
-      return [].concat(
+      const keys = [].concat(
         Object.getOwnPropertyNames(state),
         Object.getOwnPropertySymbols(state),
         __proxyequal_scanEnd
       );
+      return keys;
     }
   }
 

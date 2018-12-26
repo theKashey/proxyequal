@@ -283,56 +283,21 @@ describe('proxy', () => {
     const read = state.a + state.b + state.c.d;
     expect(read).to.be.equal(7);
     expect(trapped.affected).to.be.deep.equal(['.a', '.b', '.c', '.c.d']);
-
   });
 
-  it('should return proxy name', () => {
-    const A = {a: {b: {c: 1}}};
-    const P0 = proxyState(A, 'key1');
-    const P = P0.state;
-    expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
-    expect(P0.spreadDetected).to.be.false;
-    expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
-    expect(P0.spreadDetected).to.be.equal(".a.b");
-    expect(getProxyKey(P.a).fingerPrint).to.be.equal('key1');
-    expect(getProxyKey(P.a).suffix).to.be.equal('.a');
-    expect(getProxyKey(P.a.b).suffix).to.be.equal('.a.b');
-    expect(getProxyKey(P.a.b.c).suffix).to.be.equal(undefined);
+  it('handles prototype chain', () => {
+    const o1 = {
+      a1: 1
+    };
+    const o2 = {
+      a2: 2
+    };
+    Object.setPrototypeOf(o2,o1);
+    expect(Object.getPrototypeOf(o2)).to.be.equal(o1);
+    expect(o1.isPrototypeOf(o2)).to.be.true;
+    const trapped = proxyState(o2);
+    expect(o1.isPrototypeOf(trapped.state)).to.be.true;
   });
-
-  it('should properly handle seal command', () => {
-    const A = {a: {b: {c: 1}}};
-    const P0 = proxyState(A, 'key1');
-    const P = P0.state;
-    expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
-    expect(P0.spreadDetected).to.be.false;
-    expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
-    P0.seal();
-    expect(P.a.b).to.be.deep.equal({c: 1});
-    expect(P0.spreadDetected).to.be.equal(".a.b");
-  });
-
-  it('stand spread operator(actually - not)', () => {
-    const A = {a: 1, b: 2, c: 3};
-    const f2 = state => state.b;
-    const f1 = (state) => f2(Object.assign({}, state));
-
-    var P = proxyState(A);
-    expect(f1(P.state)).to.be.equal(2);
-    expect(P.spreadDetected).to.be.equal("");
-    expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
-  })
-
-  it('stand rest operator(actually - not)', () => {
-    const A = {a: 1, b: 2, c: 3};
-    const f2 = state => state.b;
-    const f1 = ({a, ...state}) => f2(state);
-
-    var P = proxyState(A);
-    expect(f1(P.state)).to.be.equal(2);
-    expect(P.spreadDetected).to.be.equal("");
-    expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
-  })
 
   it('detect self', () => {
     const A = {a: 1};
@@ -343,6 +308,59 @@ describe('proxy', () => {
     expect(isProxyfied(B)).to.be.true;
     expect(isProxyfied(C)).to.be.false;
     expect(C).to.be.equal(A);
+  });
+
+  describe('spread guards', () => {
+    beforeEach(() => spreadGuardsEnabled(true));
+    afterEach(() => spreadGuardsEnabled(true));
+
+    it('should return proxy name', () => {
+      const A = {a: {b: {c: 1}}};
+      const P0 = proxyState(A, 'key1');
+      const P = P0.state;
+      expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
+      expect(P0.spreadDetected).to.be.false;
+      expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
+      expect(P0.spreadDetected).to.be.equal(".a.b");
+      expect(getProxyKey(P.a).fingerPrint).to.be.equal('key1');
+      expect(getProxyKey(P.a).suffix).to.be.equal('.a');
+      expect(getProxyKey(P.a.b).suffix).to.be.equal('.a.b');
+      expect(getProxyKey(P.a.b.c).suffix).to.be.equal(undefined);
+    });
+
+    it('should properly handle seal command', () => {
+      const A = {a: {b: {c: 1}}};
+      const P0 = proxyState(A, 'key1');
+      const P = P0.state;
+      expect(deproxify(P.a.b)).to.be.deep.equal({c: 1})
+      expect(P0.spreadDetected).to.be.false;
+      expect(P.a.b).to.be.deep.equal({c: 1, __proxyequal_scanEnd: false})
+      P0.seal();
+      expect(P.a.b).to.be.deep.equal({c: 1});
+      expect(P0.spreadDetected).to.be.equal(".a.b");
+    });
+
+    it('stand spread operator(actually - not)', () => {
+      const A = {a: 1, b: 2, c: 3};
+      const f2 = state => state.b;
+      const f1 = (state) => f2(Object.assign({}, state));
+
+      const P = proxyState(A);
+      expect(f1(P.state)).to.be.equal(2);
+      expect(P.spreadDetected).to.be.equal("");
+      expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
+    });
+
+    it('stand rest operator(actually - not)', () => {
+      const A = {a: 1, b: 2, c: 3};
+      const f2 = state => state.b;
+      const f1 = ({a, ...state}) => f2(state);
+
+      var P = proxyState(A);
+      expect(f1(P.state)).to.be.equal(2);
+      expect(P.spreadDetected).to.be.equal("");
+      expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
+    });
   });
 
   describe('types', () => {
