@@ -187,7 +187,12 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
 
 const collectValuables = lines => {
   const trie = buildTrie(lines);
-  return lines.filter(value => !trie(value + '.'))
+  if(trie.edges.values) {
+    return Array.from(buildTrie(lines).edges.values());
+  } else {
+    // IE11 case
+    return lines.filter(value => trie.edges.has(value))
+  }
 };
 
 const collectShallows = lines => {
