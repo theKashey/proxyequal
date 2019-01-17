@@ -186,13 +186,25 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
 }
 
 const collectValuables = lines => {
-  const trie = buildTrie(lines);
-  if(trie.edges.values) {
-    return Array.from(buildTrie(lines).edges.values());
-  } else {
-    // IE11 case
-    return lines.filter(value => trie.edges.has(value))
+  const values = [];
+  for (let i = 0; i < lines.length; ++i) {
+    let line = lines[i];
+    let index = line.lastIndexOf('.');
+    if (index < 0 && values.indexOf(line) < 0) { // no "." and new value
+      values.push(line);
+      continue;
+    }
+    while (index >= 0) {
+      line = line.slice(0, index);
+      if (values.indexOf(line) < 0) {
+        values.push(line);
+        index = line.lastIndexOf('.');
+      } else {
+        break; // done that
+      }
+    }
   }
+  return lines.filter(line => values.indexOf(line) < 0);
 };
 
 const collectShallows = lines => {
