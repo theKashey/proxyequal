@@ -50,6 +50,7 @@ const prepareObject = state => {
   return state;
 };
 
+export const REST = Symbol('REST');
 const shouldProxy = type => type === 'object';
 
 function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
@@ -61,6 +62,20 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!alreadyProxy && !shouldInstrument(state)) {
     return state;
   }
+
+  const restProperty = {
+    get() {
+      return (excludingKeys) => {
+        const clone = {};
+        Object.keys(state).forEach((k) => {
+          if (!excludingKeys.includes(k)) {
+            clone[k] = state[k];
+          }
+        });
+        return proxyfy(clone, report, suffix, fingerPrint, ProxyMap)
+      };
+    }
+  };
 
   const hasCollectionHandlers = !alreadyProxy && getCollectionHandlers(state);
 
@@ -178,6 +193,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   storedValue[suffix] = proxy;
   ProxyMap.set(state, storedValue);
   ProxyToState.set(proxy, state);
+  Object.defineProperty(proxy, REST, restProperty);
   ProxyToFinderPrint.set(proxy, {
     suffix,
     fingerPrint
