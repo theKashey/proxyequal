@@ -10,7 +10,7 @@ import {
   isProxyfied,
   getProxyKey,
   spreadGuardsEnabled,
-  sourceMutationsEnabled
+  sourceMutationsEnabled, PROXY_REST, proxyObjectRest, proxyArrayRest
 } from '../src';
 
 describe('proxy', () => {
@@ -292,7 +292,7 @@ describe('proxy', () => {
     const o2 = {
       a2: 2
     };
-    Object.setPrototypeOf(o2,o1);
+    Object.setPrototypeOf(o2, o1);
     expect(Object.getPrototypeOf(o2)).to.be.equal(o1);
     expect(o1.isPrototypeOf(o2)).to.be.true;
     const trapped = proxyState(o2);
@@ -348,7 +348,7 @@ describe('proxy', () => {
       const P = proxyState(A);
       expect(f1(P.state)).to.be.equal(2);
       expect(P.spreadDetected).to.be.equal("");
-      expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
+      expect(P.affected).to.be.deep.equal(['.!Keys', '.a', '.b', '.c']);
     });
 
     it('stand rest operator(actually - not)', () => {
@@ -359,7 +359,7 @@ describe('proxy', () => {
       var P = proxyState(A);
       expect(f1(P.state)).to.be.equal(2);
       expect(P.spreadDetected).to.be.equal("");
-      expect(P.affected).to.be.deep.equal(['.a', '.b', '.c']);
+      expect(P.affected).to.be.deep.equal(['.a', '.!Keys', '.b', '.c']);
     });
   });
 
@@ -429,6 +429,7 @@ describe('proxy', () => {
         ".d.entries.0.1.sub2",
         ".d.entries.0.length",
         ".d.entries.0.0",
+        ".d.entries.0.1.!Keys",
         ".d.entries.0.1.sub1",
       ]);
 
@@ -461,5 +462,85 @@ describe('proxy', () => {
       sourceMutationsEnabled(false);
       expect(() => B.a = 3).to.throw();
     });
+  });
+
+  describe('edge cases', () => {
+    it('object rest', () => {
+      const state1 = {
+        a: 1,
+        b: 2,
+        c: 3,
+      };
+
+      const p1 = proxyState(state1);
+      const [a, rest] = proxyObjectRest(p1.state, ['a']);
+      expect(p1.affected).to.be.deep.equal(['.a']);
+
+      Object.keys(rest).forEach(x => rest[x]);
+
+      expect(p1.affected).to.be.deep.equal(['.a', '.!Keys', '.b', '.c']);
+    });
+
+    it('array rest', () => {
+      const state1 = [1, 2, 3];
+
+      const p0 = proxyState(state1);
+      p0.state.forEach(x => x);
+
+      expect(p0.affected).to.be.deep.equal(['.forEach', '.length', '.0', '.1', '.2']);
+
+      const p1 = proxyState(state1);
+      const [a, rest] = proxyArrayRest(p1.state, 1);
+      expect(p1.affected).to.be.deep.equal(['.length', '.0']);
+
+      rest.forEach(x => x);
+
+      expect(p1.affected).to.be.deep.equal(['.length', '.0', '.forEach', '.1', '.2']);
+    });
+
+    // https://github.com/theKashey/memoize-state/issues/26
+    it('keys and values', () => {
+      const act = (s) => Object.values(s.items).map(x => x.text);
+
+      const state1 = {
+        items: {
+          1: {text: "foo"}
+        }
+      };
+
+      const p1 = proxyState(state1);
+      act(p1.state);
+      expect(p1.affected).to.be.deep.equal([
+        ".items",
+        ".items.!Keys",
+        ".items.1",
+        ".items.1.text",
+      ]);
+
+      const state2 = {
+        items: {
+          ...state1.items,
+          2: {text: "bar"}
+        }
+      };
+
+      const p2 = proxyState(state2);
+      act(p2.state);
+      expect(p2.affected).to.be.deep.equal([
+        ".items",
+        ".items.!Keys",
+        ".items.1",
+        ".items.2",
+        ".items.1.text",
+        ".items.2.text",
+      ]);
+
+      const state3 = {
+        ...state1
+      };
+
+      expect(proxyEqual(state1, state3, p1.affected)).to.be.true;
+      expect(proxyEqual(state1, state2, p1.affected)).to.be.false;
+    })
   })
 });

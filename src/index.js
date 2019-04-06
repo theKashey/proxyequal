@@ -1,4 +1,6 @@
 import buildTrie from 'search-trie';
+import {str as crc32_str} from "crc-32";
+
 import ProxyPolyfill from './proxy-polyfill';
 import {getCollectionHandlers, shouldInstrument} from "./shouldInstrument";
 
@@ -8,6 +10,7 @@ const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
 const spreadActivation = '__proxyequal_spreadActivation';
+const objectKeysMarker = '!Keys';
 
 let areSpreadGuardsEnabled = false;
 let areSourceMutationsEnabled = false;
@@ -50,10 +53,10 @@ const prepareObject = state => {
   return state;
 };
 
-export const REST = Symbol('REST');
+export const PROXY_REST = Symbol('PROXY_REST');
 const shouldProxy = type => type === 'object';
 
-function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
+function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
   if (!state) {
     return state;
   }
@@ -62,20 +65,6 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
   if (!alreadyProxy && !shouldInstrument(state)) {
     return state;
   }
-
-  const restProperty = {
-    get() {
-      return (excludingKeys) => {
-        const clone = {};
-        Object.keys(state).forEach((k) => {
-          if (!excludingKeys.includes(k)) {
-            clone[k] = state[k];
-          }
-        });
-        return proxyfy(clone, report, suffix, fingerPrint, ProxyMap)
-      };
-    }
-  };
 
   const hasCollectionHandlers = !alreadyProxy && getCollectionHandlers(state);
 
@@ -177,26 +166,30 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap) {
     },
   };
 
-  if (shouldHookOwnKeys) {
-    hooks['ownKeys'] = function () {
+  hooks['ownKeys'] = function () {
+    report(suffix + '.' + objectKeysMarker, theBaseObject);
+    const keys = [].concat(
+      Object.getOwnPropertyNames(state),
+      Object.getOwnPropertySymbols(state),
+    );
+    if (shouldHookOwnKeys) {
       report(spreadActivation, theBaseObject);
-      const keys = [].concat(
-        Object.getOwnPropertyNames(state),
-        Object.getOwnPropertySymbols(state),
-        __proxyequal_scanEnd
-      );
-      return keys;
+      keys.push(__proxyequal_scanEnd);
     }
-  }
+    return keys;
+  };
 
   const proxy = new ProxyConstructor(theBaseObject, hooks);
   storedValue[suffix] = proxy;
   ProxyMap.set(state, storedValue);
   ProxyToState.set(proxy, state);
-  Object.defineProperty(proxy, REST, restProperty);
+
   ProxyToFinderPrint.set(proxy, {
     suffix,
-    fingerPrint
+    fingerPrint,
+    report,
+    ProxyMap,
+    control
   });
   return proxy;
 }
@@ -231,7 +224,13 @@ const collectShallows = lines => {
 const get = (target, path) => {
   let result = target;
   for (let i = 1; i < path.length && result; ++i) {
-    result = result[path[i]]
+    const key = path[i];
+    if (key[0] === '!') {
+      if (key === objectKeysMarker) {
+        return Object.keys(result).map(crc32_str).reduce((acc, x) => acc ^ x, 0);
+      }
+    }
+    result = result[key]
   }
   return result;
 };
@@ -303,7 +302,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
   let ProxyMap = _ProxyMap || new WeakMap();
   let spreadDetected = false;
   let speadActiveOn = [];
-  let sealed = false;
+  let sealed = 0;
 
   const addSpreadTest = (location) => {
     Object.defineProperty(location, __proxyequal_scanEnd, {
@@ -330,8 +329,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
     if (key === spreadActivation) {
       addSpreadTest(location);
       speadActiveOn.push(location);
-    }
-    else if (key === spreadMarker) {
+    } else if (key === spreadMarker) {
       spreadDetected = spreadDetected || location;
     } else {
       if (!set.has(key)) {
@@ -340,10 +338,8 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       }
     }
   };
-  const createState = state => proxyfy(state, onKeyUse, '', fingerPrint, ProxyMap);
 
-  return {
-    state: createState(state),
+  const control = {
     affected: affected,
     get spreadDetected() {
       return spreadDetected;
@@ -357,12 +353,12 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
     },
 
     seal() {
-      sealed = true;
+      sealed++;
       removeSpreadTest();
     },
 
     unseal() {
-      sealed = false;
+      sealed--;
     },
 
     reset() {
@@ -370,7 +366,72 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       spreadDetected = false;
       set.clear();
     }
+  };
+
+  const createState = state => proxyfy(state, onKeyUse, '', fingerPrint, ProxyMap, control);
+  control.state = createState(state);
+
+  return control;
+};
+
+const proxyObjectRest = (state, excludingKeys) => {
+  const {
+    suffix,
+    fingerPrint,
+    report,
+    ProxyMap,
+    control
+  } = getProxyKey(state);
+
+  const results = [];
+  const excludeMap = {};
+  excludingKeys.forEach((k) => {
+    results.push(state[k])
+    excludeMap[k] = true;
+  });
+
+  control.seal();
+  const rest = {};
+  Object.keys(state).forEach((k) => {
+    if (!excludeMap[k]) {
+      rest[k] = state[k];
+    }
+  });
+  control.unseal();
+
+  return [
+    ...results,
+    proxyfy(rest, report, suffix, fingerPrint, ProxyMap, control),
+  ]
+};
+
+const proxyArrayRest = (state, fromIndex) => {
+  const {
+    suffix,
+    fingerPrint,
+    report,
+    ProxyMap,
+    control
+  } = getProxyKey(state);
+
+  const results = [];
+  const rest = [];
+  let l = state.length;
+  let i;
+  for (i = 0; i < l && i < fromIndex; ++i) {
+    results.push(state[i]);
   }
+
+  control.seal();
+  for (; i < l; ++i) {
+    rest.push(state[i]);
+  }
+  control.unseal();
+
+  return [
+    ...results,
+    proxyfy(rest, report, suffix, fingerPrint, ProxyMap, control),
+  ];
 };
 
 export {
@@ -386,5 +447,8 @@ export {
   getProxyKey,
 
   collectShallows,
-  collectValuables
+  collectValuables,
+
+  proxyObjectRest,
+  proxyArrayRest,
 };
