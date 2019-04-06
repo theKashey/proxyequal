@@ -310,6 +310,39 @@ describe('proxy', () => {
     expect(C).to.be.equal(A);
   });
 
+  describe('affected optimizations', () => {
+    it('affected should be immutable', () => {
+      const A = {a: 1, b: 2, c: 3};
+      const p = proxyState(A);
+      expect(p.state.a).to.be.equal(1);
+      const a1 = p.affected;
+      expect(a1).to.be.deep.equal(['.a']);
+      expect(p.state.b).to.be.equal(2);
+      expect(a1).to.be.deep.equal(['.a', '.b']);
+      p.reset();
+      expect(p.state.c).to.be.equal(3);
+      const a2 = p.affected;
+      expect(a1).to.be.deep.equal(['.a', '.b']);
+      expect(a2).to.be.deep.equal(['.c']);
+    });
+
+    it('should reuse affected', () => {
+      const A = {a: 1, b: 2, c: 3};
+      const p = proxyState(A);
+      expect(p.state.a).to.be.equal(1);
+      expect(p.state.b).to.be.equal(2);
+      const a1 = p.affected;
+      expect(a1).to.be.deep.equal(['.a', '.b']);
+      p.reset();
+      expect(p.state.a).to.be.equal(1);
+      expect(p.affected).not.to.be.equal(a1);
+      expect(p.state.b).to.be.equal(2);
+      expect(p.affected).to.be.equal(a1);
+      expect(p.state.c).to.be.equal(3);
+      expect(p.affected).not.to.be.equal(a1);
+    })
+  });
+
   describe('spread guards', () => {
     beforeEach(() => spreadGuardsEnabled(true));
     afterEach(() => spreadGuardsEnabled(true));

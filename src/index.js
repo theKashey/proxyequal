@@ -3,6 +3,7 @@ import {str as crc32_str} from "crc-32";
 
 import ProxyPolyfill from './proxy-polyfill';
 import {getCollectionHandlers, shouldInstrument} from "./shouldInstrument";
+import {weakMemoizeArray} from "./weakMemoize";
 
 const hasProxy = typeof Proxy !== 'undefined';
 const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
@@ -292,17 +293,23 @@ const proxyShallowEqual = (a, b, locations) => {
   return true;
 };
 
+const memoizedCollectValuables = weakMemoizeArray(collectValuables);
+const memoizedCollectShallows = weakMemoizeArray(collectShallows);
+
 const proxyEqual = (a, b, affected) => {
   differs = [];
-  return proxyCompare(a, b, collectValuables(affected));
+  return proxyCompare(a, b, memoizedCollectValuables(affected));
 };
 const proxyShallow = (a, b, affected) => {
   differs = [];
-  return proxyCompare(a, b, collectShallows(affected));
+  return proxyCompare(a, b, memoizedCollectShallows(affected));
 };
 
 const proxyState = (state, fingerPrint = '', _ProxyMap) => {
+  let lastAffected = null;
   let affected = [];
+  let affectedEqualToLast = true;
+
   let set = new Set();
   let ProxyMap = _ProxyMap || new WeakMap();
   let spreadDetected = false;
@@ -338,15 +345,27 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       } else {
         if (!set.has(key)) {
           set.add(key);
-          affected.push(key)
+          affected.push(key);
+          if (lastAffected) {
+            const position = affected.length - 1;
+            if (lastAffected[position] !== affected[position]) {
+              affectedEqualToLast = false;
+            }
+          }
         }
       }
     }
     return key;
   };
 
+  const shouldUseLastAffected = () => (
+    lastAffected && affectedEqualToLast && lastAffected.length === affected.length
+  );
+
   const control = {
-    affected: affected,
+    get affected() {
+      return shouldUseLastAffected() ? lastAffected : affected;
+    },
     get spreadDetected() {
       return spreadDetected;
     },
@@ -368,7 +387,11 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
     },
 
     reset() {
-      affected.length = 0;
+      if (!shouldUseLastAffected()) {
+        lastAffected = affected;
+      }
+      affectedEqualToLast = true;
+      affected = [];
       spreadDetected = false;
       set.clear();
     },
