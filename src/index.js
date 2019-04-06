@@ -322,18 +322,17 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
 
   const onKeyUse = (suffix, keyName, location) => {
     const key = suffix + '.' + keyName;
-    if (sealed) {
-      return;
-    }
-    if (keyName === spreadActivation) {
-      addSpreadTest(location);
-      speadActiveOn.push(location);
-    } else if (keyName === spreadMarker) {
-      spreadDetected = spreadDetected || location;
-    } else {
-      if (!set.has(key)) {
-        set.add(key);
-        affected.push(key)
+    if (!sealed) {
+      if (keyName === spreadActivation) {
+        addSpreadTest(location);
+        speadActiveOn.push(location);
+      } else if (keyName === spreadMarker) {
+        spreadDetected = spreadDetected || location;
+      } else {
+        if (!set.has(key)) {
+          set.add(key);
+          affected.push(key)
+        }
       }
     }
     return key;
