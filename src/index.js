@@ -101,13 +101,12 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
   };
 
   const proxyValue = (key, value) => {
-    const thisId = suffix + '.' + key;
+    const thisId = report(suffix, key);
     const type = typeof value;
 
-    report(thisId);
 
     if (shouldProxy(type)) {
-      return proxyfy(value, report, thisId, fingerPrint, ProxyMap)
+      return proxyfy(value, control.report, thisId, fingerPrint, ProxyMap, control);
     }
 
     if (hasCollectionHandlers) {
@@ -132,10 +131,9 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
 
   const hooks = {
     set(target, prop, value) {
-      const thisId = suffix + '.' + prop;
+      const thisId = report(suffix, prop);
       if (areSourceMutationsEnabled) {
         state[prop] = value;
-        report(thisId);
         return true
       } else {
         /* eslint-disable-next-line */
@@ -153,7 +151,7 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
 
     get(target, prop) {
       if (prop === __proxyequal_scanEnd) {
-        report(spreadMarker, suffix);
+        report(suffix, spreadMarker, suffix);
         return false;
       }
 
@@ -167,13 +165,13 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
   };
 
   hooks['ownKeys'] = function () {
-    report(suffix + '.' + objectKeysMarker, theBaseObject);
+    report(suffix, objectKeysMarker, theBaseObject);
     const keys = [].concat(
       Object.getOwnPropertyNames(state),
       Object.getOwnPropertySymbols(state),
     );
     if (shouldHookOwnKeys) {
-      report(spreadActivation, theBaseObject);
+      report(suffix, spreadActivation, theBaseObject);
       keys.push(__proxyequal_scanEnd);
     }
     return keys;
@@ -322,14 +320,15 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
     speadActiveOn = [];
   };
 
-  const onKeyUse = (key, location) => {
+  const onKeyUse = (suffix, keyName, location) => {
+    const key = suffix + '.' + keyName;
     if (sealed) {
       return;
     }
-    if (key === spreadActivation) {
+    if (keyName === spreadActivation) {
       addSpreadTest(location);
       speadActiveOn.push(location);
-    } else if (key === spreadMarker) {
+    } else if (keyName === spreadMarker) {
       spreadDetected = spreadDetected || location;
     } else {
       if (!set.has(key)) {
@@ -337,6 +336,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
         affected.push(key)
       }
     }
+    return key;
   };
 
   const control = {
@@ -365,7 +365,9 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       affected.length = 0;
       spreadDetected = false;
       set.clear();
-    }
+    },
+
+    report: onKeyUse,
   };
 
   const createState = state => proxyfy(state, onKeyUse, '', fingerPrint, ProxyMap, control);
@@ -428,9 +430,17 @@ const proxyArrayRest = (state, fromIndex) => {
   }
   control.unseal();
 
+  const prefixedReport = (prefix, key) => {
+    if (key === String(+key)) {
+      report(prefix, +key + fromIndex)
+    } else {
+      report(prefix, key);
+    }
+  }
+
   return [
     ...results,
-    proxyfy(rest, report, suffix, fingerPrint, ProxyMap, control),
+    proxyfy(rest, prefixedReport, suffix, fingerPrint, ProxyMap, control),
   ];
 };
 
