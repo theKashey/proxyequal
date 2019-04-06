@@ -256,6 +256,7 @@ const proxyCompare = (a, b, locations) => {
 };
 
 const proxyShallowEqual = (a, b, locations) => {
+  differs = [];
   const checkedPaths = new Map();
   const results = new Map();
 
@@ -291,8 +292,14 @@ const proxyShallowEqual = (a, b, locations) => {
   return true;
 };
 
-const proxyEqual = (a, b, affected) => proxyCompare(a, b, collectValuables(affected));
-const proxyShallow = (a, b, affected) => proxyCompare(a, b, collectShallows(affected));
+const proxyEqual = (a, b, affected) => {
+  differs = [];
+  return proxyCompare(a, b, collectValuables(affected));
+};
+const proxyShallow = (a, b, affected) => {
+  differs = [];
+  return proxyCompare(a, b, collectShallows(affected));
+};
 
 const proxyState = (state, fingerPrint = '', _ProxyMap) => {
   let affected = [];
