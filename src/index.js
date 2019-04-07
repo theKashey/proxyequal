@@ -220,6 +220,9 @@ const collectShallows = lines => {
   return lines.filter(value => trie(value + '.') || !value.lastIndexOf('.'))
 };
 
+const memoizedCollectValuables = weakMemoizeArray(collectValuables);
+const memoizedCollectShallows = weakMemoizeArray(collectShallows);
+
 const get = (target, path) => {
   let result = target;
   for (let i = 1; i < path.length && result; ++i) {
@@ -246,9 +249,11 @@ const proxyCompare = (a, b, locations) => {
   for (let i = 0; i < locations.length; ++i) {
     const key = locations[i];
     const path = key.split('.');
-    const la = deepDeproxify(get(a, path));
-    const lb = deepDeproxify(get(b, path));
-    if (la !== lb) {
+    const la = get(a, path);
+    const lb = get(b, path);
+    if (la === lb || deepDeproxify(la) === deepDeproxify(lb)) {
+      // nope
+    } else {
       differs.push([key, 'differs', la, lb]);
       return false;
     }
@@ -258,43 +263,33 @@ const proxyCompare = (a, b, locations) => {
 
 const proxyShallowEqual = (a, b, locations) => {
   differs = [];
-  const checkedPaths = new Map();
-  const results = new Map();
+  const checkedPaths = [];
+  const valuables = memoizedCollectValuables(locations);
 
   for (let i = 0; i < locations.length; ++i) {
     const key = locations[i];
     const prevKey = key.substr(0, key.lastIndexOf('.'));
-    if (checkedPaths.has(prevKey)) {
-      checkedPaths.set(key, true);
+    if (checkedPaths.indexOf(prevKey) >= 0) {
+      checkedPaths.push(key);
       continue;
     }
 
     const path = key.split('.');
-    const la = deepDeproxify(get(a, path));
-    const lb = deepDeproxify(get(b, path));
-    const equal = la === lb;
+    const la = get(a, path);
+    const lb = get(b, path);
 
-    results.delete(prevKey);
-    results.set(key, equal);
-    if (equal) {
-      checkedPaths.set(key, true);
-    }
-  }
-
-  const tails = results.entries();
-  let pair;
-  while ((pair = tails.next().value)) {
-    if (!pair[1]) {
-      differs.push([pair[0], 'not equal']);
-      return false;
+    if ((la === lb) || (deepDeproxify(la) === deepDeproxify(lb))) {
+      checkedPaths.push(key);
+    } else {
+      if (valuables.indexOf(key) >= 0) {
+        differs.push([key, 'not equal']);
+        return false;
+      }
     }
   }
 
   return true;
 };
-
-const memoizedCollectValuables = weakMemoizeArray(collectValuables);
-const memoizedCollectShallows = weakMemoizeArray(collectShallows);
 
 const proxyEqual = (a, b, affected) => {
   differs = [];
