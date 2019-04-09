@@ -266,32 +266,26 @@ const nestedSort = (a, b) => {
   const bl = b.length;
 
   if (al < bl) {
-    const bs = b.substr(0, al);
-    return bs == a ? -1 : 1;
+    return b.indexOf(a) === 0 ? -1 : 1;
   }
   if (al > bl) {
-    const as = a.substr(0, bl);
-    return as == b ? 1 : -1;
+    return a.indexOf(b) === 0 ? -1 : 1;
   }
-  return a < b;
+  return 0;
 };
+
+const sortedLocations = locations => [...locations].sort(nestedSort);
+
+const memoizedSortedLocations = weakMemoizeArray(sortedLocations);
 
 const proxyShallowEqual = (a, b, locations) => {
   differs = [];
-  const checkedPaths = [];
-  const valuables = memoizedCollectValuables(locations);
-
-  // is simple comparison could be faster - go for it
-  if (valuables.length < locations.length * 0.9) {
-    return proxyCompare(a, b, valuables);
-  }
-
-  for (let i = 0; i < locations.length; ++i) {
-    const key = locations[i];
-    const prevKey = key.substr(0, key.lastIndexOf('.'));
-
-    if (checkedPaths.indexOf(prevKey) >= 0) {
-      checkedPaths.push(key);
+  let valuables = null;
+  const nestedLocations = memoizedSortedLocations(locations);
+  let lastEqualKey = '';
+  for (let i = 0; i < nestedLocations.length; ++i) {
+    const key = nestedLocations[i];
+    if (lastEqualKey && key.indexOf(lastEqualKey) === 0) {
       continue;
     }
 
@@ -300,8 +294,11 @@ const proxyShallowEqual = (a, b, locations) => {
     const lb = get(b, path);
 
     if ((la === lb) || (deepDeproxify(la) === deepDeproxify(lb))) {
-      checkedPaths.push(key);
+      lastEqualKey = key;
     } else {
+      if (!valuables) {
+        valuables = memoizedCollectValuables(locations);
+      }
       if (valuables.indexOf(key) >= 0) {
         differs.push([key, 'not equal']);
         return false;
