@@ -261,14 +261,35 @@ const proxyCompare = (a, b, locations) => {
   return true;
 };
 
+const nestedSort = (a, b) => {
+  const al = a.length;
+  const bl = b.length;
+
+  if (al < bl) {
+    const bs = b.substr(0, al);
+    return bs == a ? -1 : 1;
+  }
+  if (al > bl) {
+    const as = a.substr(0, bl);
+    return as == b ? 1 : -1;
+  }
+  return a < b;
+};
+
 const proxyShallowEqual = (a, b, locations) => {
   differs = [];
   const checkedPaths = [];
   const valuables = memoizedCollectValuables(locations);
 
+  // is simple comparison could be faster - go for it
+  if (valuables.length < locations.length * 0.9) {
+    return proxyCompare(a, b, valuables);
+  }
+
   for (let i = 0; i < locations.length; ++i) {
     const key = locations[i];
     const prevKey = key.substr(0, key.lastIndexOf('.'));
+
     if (checkedPaths.indexOf(prevKey) >= 0) {
       checkedPaths.push(key);
       continue;
