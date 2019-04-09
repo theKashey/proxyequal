@@ -268,8 +268,8 @@ const nestedSort = (a, b) => {
     if (!ac && !bc) return 0;
     if (ac && !bc) return 1;
     if (!ac && bc) return -1;
-    if (ac < bc) return 1;
-    if (ac > bc) return -1;
+    if (ac > bc) return 1;
+    if (ac < bc) return -1;
   }
 };
 
