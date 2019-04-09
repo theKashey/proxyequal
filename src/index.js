@@ -262,16 +262,15 @@ const proxyCompare = (a, b, locations) => {
 };
 
 const nestedSort = (a, b) => {
-  const al = a.length;
-  const bl = b.length;
-
-  if (al < bl) {
-    return b.indexOf(a) === 0 ? -1 : 1;
+  for (let i = 0; ; ++i) {
+    const ac = a.charCodeAt(i);
+    const bc = b.charCodeAt(i);
+    if (!ac && !bc) return 0;
+    if (ac && !bc) return 1;
+    if (!ac && bc) return -1;
+    if (ac > bc) return 1;
+    if (ac < bc) return -1;
   }
-  if (al > bl) {
-    return a.indexOf(b) === 0 ? -1 : 1;
-  }
-  return 0;
 };
 
 const sortedLocations = locations => [...locations].sort(nestedSort);
