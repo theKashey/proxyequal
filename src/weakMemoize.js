@@ -1,6 +1,4 @@
 export const weakMemoizeArray = fn => {
-  return arg => fn(arg); // for benchmark
-
   let cache = new WeakMap();
   return arg => {
     if (cache.has(arg)) {
