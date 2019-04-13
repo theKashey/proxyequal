@@ -30,8 +30,9 @@ const s5 = Object.assign({}, s1, {
 const left = s1;
 const right = s5;
 
-//const locations = [".d", ".d.0", ".d.0.0", ".d.0.1", ".d.0.2"];
-const locations = [".e",".e.a",".e.a.b",".a",'.b'];
+// const locations = [".d", ".d.0", ".d.0.0", ".d.0.1", ".d.0.2"];
+// const locations = [".e",".e.a",".e.a.b",".a",'.b'];
+const locations = [".a",".b",".c",".cc",".ccc",".cccc",".aa",".bb"];
 
 proxyCompare(left, right, locations);
 proxyEqual(left, right, locations);

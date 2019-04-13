@@ -25,6 +25,25 @@ const a3 = [
   '.eee.e.e'
 ];
 
+function theNextDot(a, b, start) {
+  for (let i = start; ; ++i) {
+    const ac = a.charCodeAt(i);
+    const bc = b.charCodeAt(i);
+    if (!ac && !bc) return 0;
+    if (ac && !bc) return;
+    if (!ac && bc) return -1;
+    if (ac !== bc) {
+      if (ac === '.') {
+        return -1;
+      }
+      if (bc === '.') {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
 const kSort = (a, b) => {
   const r = (function () {
     const al = a.length;
@@ -33,19 +52,19 @@ const kSort = (a, b) => {
     const d = 1; //Math.abs(al - bl);
 
     if (al < bl) {
-      return b[al] === '.' && b.indexOf(a) === 0 ? -1 : 1;
+      return b[al] === '.' && b.indexOf(a) === 0 ? -1 : dSort(a, b);
     }
     if (al > bl) {
-      return a[bl] === '.' && a.indexOf(b) === 0 ? -1 : 1;
+      return a[bl] === '.' && a.indexOf(b) === 0 ? 1 : dSort(a, b);
     }
-    return dSort(a,b);
+    return 0;
   })();
   console.log(a, b, r);
   return r;
 };
 
 const dSort = (a, b) => {
-  console.log(a,b);
+  console.log(a, b);
   for (let i = 0; ; ++i) {
     const ac = a.charCodeAt(i);
     const bc = b.charCodeAt(i);
@@ -71,7 +90,7 @@ function dsort(a) {
 // console.log('---');
 //console.log(a2);
 console.log(ksort(a3));
-console.log(dsort(a2));
+// console.log(dsort(a2));
 
 return;
 

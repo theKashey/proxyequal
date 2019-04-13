@@ -164,6 +164,22 @@ describe('proxy', () => {
     expect(proxyShallowEqual(A1, A4, trapped.affected)).to.be.true;
   });
 
+  it('falseNested shallowEqual', () => {
+    const A1 = {
+      a: 1,
+      aa: 1
+    };
+    const A2 = {
+      a: 1,
+      aa: 2
+    };
+
+    const trapped = proxyState(A1);
+    expect(trapped.state.a).to.be.equal(trapped.state.aa);
+
+    expect(proxyShallowEqual(A1, A2, trapped.affected)).to.be.false;
+  });
+
   it('nested shallowEqual', () => {
     const A1 = {
       key1: 1,
@@ -245,10 +261,10 @@ describe('proxy', () => {
 
     expect(proxyEqual(p2.state, A.root.b, ['.c.e'])).to.be.true;
 
-    expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d', '.b.a', '.b.c.e']);
-    expect(p2.affected).to.be.deep.equal(['.c', '.c.d', '.a', '.c.e']);
+    expect(p1.affected).to.be.deep.equal(['.b', '.b.c', '.b.c.d', '.b.a']);
+    expect(p2.affected).to.be.deep.equal(['.c', '.c.d', '.a']);
 
-    expect(p0.affected).to.be.deep.equal(['.root', '.root.b', '.root.b.c', '.root.b.c.d', '.root.b.a', '.root.b.c.e']);
+    expect(p0.affected).to.be.deep.equal(['.root', '.root.b', '.root.b.c', '.root.b.c.d', '.root.b.a']);
   });
 
   it('shallow equal test', () => {

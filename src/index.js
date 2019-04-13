@@ -16,6 +16,8 @@ const objectKeysMarker = '!Keys';
 let areSpreadGuardsEnabled = false;
 let areSourceMutationsEnabled = false;
 
+let DISABLE_ALL_PROXIES = false;
+
 export const spreadGuardsEnabled = (flag) => (areSpreadGuardsEnabled = flag);
 export const sourceMutationsEnabled = (flag) => (areSourceMutationsEnabled = flag);
 
@@ -157,6 +159,9 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
       }
 
       const storedValue = state[prop];
+      if (DISABLE_ALL_PROXIES) {
+        return storedValue;
+      }
       if (typeof prop === 'string') {
         return proxyValue(prop, storedValue);
       }
@@ -166,14 +171,16 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
   };
 
   hooks['ownKeys'] = function () {
-    report(suffix, objectKeysMarker, theBaseObject);
     const keys = [].concat(
       Object.getOwnPropertyNames(state),
       Object.getOwnPropertySymbols(state),
     );
-    if (shouldHookOwnKeys) {
-      report(suffix, spreadActivation, theBaseObject);
-      keys.push(__proxyequal_scanEnd);
+    if (!DISABLE_ALL_PROXIES) {
+      report(suffix, objectKeysMarker, theBaseObject);
+      if (shouldHookOwnKeys) {
+        report(suffix, spreadActivation, theBaseObject);
+        keys.push(__proxyequal_scanEnd);
+      }
     }
     return keys;
   };
@@ -191,6 +198,18 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
     control
   });
   return proxy;
+}
+
+const withProxiesDisabled = (fn) => {
+  if (DISABLE_ALL_PROXIES) {
+    return fn();
+  }
+  DISABLE_ALL_PROXIES = true;
+  try {
+    return fn();
+  } finally {
+    DISABLE_ALL_PROXIES = false;
+  }
 }
 
 const collectValuables = lines => {
@@ -246,19 +265,24 @@ export const drainDifference = () => {
 };
 
 const proxyCompare = (a, b, locations) => {
-  for (let i = 0; i < locations.length; ++i) {
-    const key = locations[i];
-    const path = key.split('.');
-    const la = get(a, path);
-    const lb = get(b, path);
-    if (la === lb || deepDeproxify(la) === deepDeproxify(lb)) {
-      // nope
-    } else {
-      differs.push([key, 'differs', la, lb]);
-      return false;
+  DISABLE_ALL_PROXIES = true;
+  const ret = (() => {
+    for (let i = 0; i < locations.length; ++i) {
+      const key = locations[i];
+      const path = key.split('.');
+      const la = get(a, path);
+      const lb = get(b, path);
+      if (la === lb || deepDeproxify(la) === deepDeproxify(lb)) {
+        // nope
+      } else {
+        differs.push([key, 'differs', la, lb]);
+        return false;
+      }
     }
-  }
-  return true;
+    return true;
+  })();
+  DISABLE_ALL_PROXIES = false;
+  return ret;
 };
 
 const nestedSort = (a, b) => {
@@ -278,34 +302,44 @@ const sortedLocations = locations => [...locations].sort(nestedSort);
 const memoizedSortedLocations = weakMemoizeArray(sortedLocations);
 
 const proxyShallowEqual = (a, b, locations) => {
-  differs = [];
-  let valuables = null;
-  const nestedLocations = memoizedSortedLocations(locations);
-  let lastEqualKey = '';
-  for (let i = 0; i < nestedLocations.length; ++i) {
-    const key = nestedLocations[i];
-    if (lastEqualKey && key.indexOf(lastEqualKey) === 0) {
-      continue;
+  DISABLE_ALL_PROXIES = true;
+  const ret = (() => {
+    differs = [];
+    let valuables = null;
+    const nestedLocations = memoizedSortedLocations(locations);
+    let lastEqualKey = '';
+    for (let i = 0; i < nestedLocations.length; ++i) {
+      const key = nestedLocations[i];
+      if (
+        lastEqualKey &&
+        key.length > lastEqualKey.length &&
+        key[lastEqualKey.length] === '.' &&
+        key.indexOf(lastEqualKey) === 0
+      ) {
+        continue;
+      }
+
+      const path = key.split('.');
+      const la = get(a, path);
+      const lb = get(b, path);
+
+      if ((la === lb) || (deepDeproxify(la) === deepDeproxify(lb))) {
+        lastEqualKey = key;
+      } else {
+        if (!valuables) {
+          valuables = memoizedCollectValuables(locations);
+        }
+        if (valuables.indexOf(key) >= 0) {
+          differs.push([key, 'not equal']);
+          return false;
+        }
+      }
     }
 
-    const path = key.split('.');
-    const la = get(a, path);
-    const lb = get(b, path);
-
-    if ((la === lb) || (deepDeproxify(la) === deepDeproxify(lb))) {
-      lastEqualKey = key;
-    } else {
-      if (!valuables) {
-        valuables = memoizedCollectValuables(locations);
-      }
-      if (valuables.indexOf(key) >= 0) {
-        differs.push([key, 'not equal']);
-        return false;
-      }
-    }
-  }
-
-  return true;
+    return true;
+  })();
+  DISABLE_ALL_PROXIES = false;
+  return ret;
 };
 
 const proxyEqual = (a, b, affected) => {
@@ -386,6 +420,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       this.state = createState(state);
       spreadDetected = false;
       this.unseal();
+      sealed = 0;
       return this;
     },
 
@@ -405,6 +440,7 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       affectedEqualToLast = true;
       affected = [];
       spreadDetected = false;
+      sealed = 0;
       set.clear();
     },
 
@@ -502,4 +538,6 @@ export {
 
   proxyObjectRest,
   proxyArrayRest,
+
+  withProxiesDisabled,
 };
