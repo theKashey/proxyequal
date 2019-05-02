@@ -288,34 +288,35 @@ const proxyCompare = (a, b, locations) => {
 
 const getterHelper = ['',''];
 
+let differ = [];
+const walk = (la, lb, node) => {
+  if (la === lb || deepDeproxify(la) === deepDeproxify(lb)) {
+    return true;
+  }
+  if (node === EDGE) {
+    return false;
+  }
+  const items = Object.keys(node);
+  for (let i = 0; i < items.length; ++i) {
+    const item = items[i];
+    getterHelper[1]=item;
+    if (!walk(
+      get(la, getterHelper),
+      get(lb, getterHelper),
+      node[item],
+    )) {
+      differ.unshift(item);
+      return false;
+    }
+  }
+  return true;
+};
 const proxyShallowEqual = (a, b, locations) => {
   DISABLE_ALL_PROXIES = true;
-  const differ = [];
+  differ = [];
   differs = [];
   const ret = (() => {
     const root = memoizedBuildTrie(locations);
-    const walk = (la, lb, node) => {
-      if (la === lb || deepDeproxify(la) === deepDeproxify(lb)) {
-        return true;
-      }
-      if (node === EDGE) {
-        return false;
-      }
-      const items = Object.keys(node);
-      for (let i = 0; i < items.length; ++i) {
-        const item = items[i];
-        getterHelper[1]=item;
-        if (!walk(
-          get(la, getterHelper),
-          get(lb, getterHelper),
-          node[item],
-        )) {
-          differ.unshift(item);
-          return false;
-        }
-      }
-      return true;
-    };
     return walk(a, b, root);
   })();
   DISABLE_ALL_PROXIES = false;
