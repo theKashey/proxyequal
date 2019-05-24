@@ -20,8 +20,12 @@
     "equal",
     "proxy"
   ],
-  "author": "Anton Korzunov (thekashey@gmail.com)",
+  "author": "Anton Korzunov <thekashey@gmail.com>",
   "license": "MIT",
+  "dependencies": {
+    "crc-32": "^1.2.0",
+    "search-trie": "^1.1.0"
+  },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-eslint": "^8.2.1",
@@ -43,9 +47,10 @@
     "url": "https://github.com/theKashey/proxyequal/issues"
   },
   "homepage": "https://github.com/theKashey/proxyequal#readme",
-  "dependencies": {
-    "crc-32": "^1.2.0",
-    "proxyequal": "^2.0.4",
-    "search-trie": "^1.1.0"
+  "nyc": {
+    "exclude": [
+      "_tests/*",
+      "src/proxy-polyfill.js"
+    ]
   }
 }
