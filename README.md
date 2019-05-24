@@ -3,11 +3,9 @@ proxyequal
 [![CircleCI status](https://img.shields.io/circleci/project/github/theKashey/proxyequal/master.svg?style=flat-square)](https://circleci.com/gh/theKashey/proxyequal/tree/master)
 [![Greenkeeper badge](https://badges.greenkeeper.io/theKashey/proxyequal.svg)](https://greenkeeper.io/)
 
-Shallow equal is a good thing, but it compares thing you dont need
+Shallow equal is a good thing, but it compares thing you don't need.
 
 Proxy equal - "MobX"-like solution, which will "magically" compare only used keys.
-
-Just 150 lines long. 100% test coverage.
 
 [![NPM](https://nodei.co/npm/proxyequal.png?downloads=true&stars=true)](https://nodei.co/npm/proxyequal/) 
 
@@ -19,13 +17,13 @@ proxyState returns object with shape
   * affected - list of used keys in a state.
   * seal - disables tracking
   * unseal - enabled tracking
-  * replaceState(newState) - replaces top level state, maintaing rest of data.
+  * replaceState(newState) - replaces top level state, maintaining rest of data.
   * reset - resets tracked keys
    
 
 * `proxy` will collect all referenced or used keys
 * `proxyEqual` will compare all used "endpoint" keys of 2 objects
-* `proxyShallow` will comparent all used __NON__ "endpoint" keys of 2 objects.
+* `proxyShallow` will compare all used __NON__ "endpoint" keys of 2 objects.
 
 The difference between proxyEqual and proxyShallow is in _expectations_.
 * proxyShallow is similar to `shallowEqual`, it compares the top level objects. Might be they are still the same.
@@ -57,7 +55,7 @@ proxyShallow(state, newState, trapped.affected);
 // next - deep compare
 proxyEqual(state, newState, trapped.affected);
 ```
-### Dont forget to disable
+### Don't forget to disable
 ```js
 const trapped = proxyState(state);
 // do something
@@ -79,7 +77,7 @@ So - it is lighting fast.
 
 ## Limitations
 
-Unfortunately, due to Proxy wrappers all `objects` will be enique each run.
+Unfortunately, due to Proxy wrappers all `objects` will be unique each run.
 ```js
  shallowEqual(proxyState(A), proxyState(A)) === false
 ```
@@ -88,8 +86,7 @@ Once it will be proven to work stable - we will expose it.
 
 ## Compatibility
 
-__NOT__ compatible with __IE11__. One need to provide a proxy polyfill to make this work.
-See https://github.com/GoogleChrome/proxy-polyfill
+Requires [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) support, so the [proxy-polyfill](https://github.com/GoogleChrome/proxy-polyfill) is included in the common bundle for Internet Explorer 11. How this works may change in future, see [issue #15 "ProxyPolyfill is unconditionally imported"](https://github.com/theKashey/proxyequal/issues/15) for details.
 
 # Licence
 MIT
