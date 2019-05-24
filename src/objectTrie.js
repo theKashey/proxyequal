@@ -17,7 +17,7 @@ const buildObjTrie = (lines) => {
     }
     node[path[lastIndex]] = EDGE;
   }
-  return root; // FIXME
+  return root;
 };
 
 export const memoizedBuildTrie = weakMemoizeArray(buildObjTrie);
