@@ -14,7 +14,7 @@
  * the License.
  */
 
-export default function proxyPolyfill() {
+export function proxyPolyfill() {
   let lastRevokeFn = null;
   let ProxyPolyfill;
 

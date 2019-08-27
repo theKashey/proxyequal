@@ -1,13 +1,14 @@
 import buildTrie from 'search-trie';
 import {str as crc32_str} from "crc-32";
 
-import ProxyPolyfill from './proxy-polyfill';
 import {getCollectionHandlers, shouldInstrument} from "./shouldInstrument";
 import {weakMemoizeArray} from "./weakMemoize";
 import {EDGE, memoizedBuildTrie} from "./objectTrie";
 
 const hasProxy = typeof Proxy !== 'undefined';
-const ProxyConstructor = hasProxy ? Proxy : ProxyPolyfill();
+const ProxyConstructor = hasProxy
+  ? Proxy
+  : require('./proxy-polyfill').proxyPolyfill(); // use lazy evaluation for the polyfill to speed up browsers which does not require it
 
 const spreadMarker = '!SPREAD';
 const __proxyequal_scanEnd = '__proxyequal_scanEnd';
@@ -154,15 +155,18 @@ function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, control) {
     },
 
     get(target, prop) {
-      if (prop === __proxyequal_scanEnd) {
-        report(suffix, spreadMarker, suffix);
-        return false;
+      if (process.env.NODE_ENV !== 'production') {
+        if (prop === __proxyequal_scanEnd) {
+          report(suffix, spreadMarker, suffix);
+          return false;
+        }
       }
 
       const storedValue = state[prop];
       if (DISABLE_ALL_PROXIES) {
         return storedValue;
       }
+
       if (typeof prop === 'string') {
         return proxyValue(prop, storedValue);
       }
