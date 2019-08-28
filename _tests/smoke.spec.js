@@ -10,7 +10,9 @@ import {
   isProxyfied,
   getProxyKey,
   spreadGuardsEnabled,
-  sourceMutationsEnabled, PROXY_REST, proxyObjectRest, proxyArrayRest
+  sourceMutationsEnabled,
+  proxyObjectRest,
+  proxyArrayRest
 } from '../src';
 
 describe('proxy', () => {
