@@ -1,6 +1,6 @@
 {
   "name": "proxyequal",
-  "version": "2.0.9",
+  "version": "2.1.0",
   "description": "A proxy based usage tracking and comparison",
   "main": "dist/es5/index.js",
   "jsnext:main": "dist/es2015/index.js",
