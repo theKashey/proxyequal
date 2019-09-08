@@ -24,8 +24,10 @@ export const sourceMutationsEnabled = (flag) => (areSourceMutationsEnabled = fla
 
 const ProxyToState = new WeakMap();
 const ProxyToFinderPrint = new WeakMap();
+const KnownObjects = new WeakSet();
 
 const isProxyfied = object => object && typeof object === 'object' ? ProxyToState.has(object) : false;
+const isKnownObject = object => object && typeof object === 'object' ? KnownObjects.has(object) : false;
 
 const deproxify = (object) => object && typeof object === 'object' ? ProxyToState.get(object) : object || object;
 
@@ -65,6 +67,10 @@ export function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, contr
     return state;
   }
   const alreadyProxy = isProxyfied(state);
+
+  if (!alreadyProxy) {
+    KnownObjects.add(state);
+  }
 
   if (!alreadyProxy && !shouldInstrument(state)) {
     return state;
@@ -424,6 +430,10 @@ const proxyState = (state, fingerPrint = '', _ProxyMap) => {
       set.clear();
     },
 
+    isKnownObject(ref) {
+      return ProxyMap.has(ref)
+    },
+
     report: onKeyUse,
   };
 
@@ -442,6 +452,7 @@ export {
   get,
   deproxify,
   isProxyfied,
+  isKnownObject,
   getProxyKey,
 
   collectValuables,

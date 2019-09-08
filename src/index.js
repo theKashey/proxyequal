@@ -7,6 +7,7 @@ import {
   get,
   deproxify,
   isProxyfied,
+  isKnownObject,
   getProxyKey,
 
   collectValuables,
@@ -34,6 +35,7 @@ export {
   get,
   deproxify,
   isProxyfied,
+  isKnownObject,
   getProxyKey,
 
   collectShallows,

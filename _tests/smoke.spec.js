@@ -12,7 +12,7 @@ import {
   spreadGuardsEnabled,
   sourceMutationsEnabled,
   proxyObjectRest,
-  proxyArrayRest
+  proxyArrayRest, isKnownObject
 } from '../src';
 
 describe('proxy', () => {
@@ -486,6 +486,15 @@ describe('proxy', () => {
 
       spreadGuardsEnabled(true);
     })
+  });
+
+  it('should remember objects', () => {
+    const a = {};
+    expect(isKnownObject(null)).to.be.equal(false);
+    expect(isKnownObject('')).to.be.equal(false);
+    expect(isKnownObject(a)).to.be.equal(false);
+    proxyState(a);
+    expect(isKnownObject(a)).to.be.equal(true);
   });
 
   describe('set', () => {

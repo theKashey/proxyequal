@@ -6,7 +6,7 @@ declare module 'proxyequal' {
         reset: () => void,
 
         replaceState(state: T): ProxyStateResult<T>
-    };
+    }
 
     /**
      * Wraps state with traps
