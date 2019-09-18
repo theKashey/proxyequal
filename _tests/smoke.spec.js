@@ -14,6 +14,7 @@ import {
   proxyObjectRest,
   proxyArrayRest, isKnownObject
 } from '../src';
+import {unescapeKey} from "../src/escapeKey";
 
 describe('proxy', () => {
   it('arrays', () => {
@@ -315,6 +316,20 @@ describe('proxy', () => {
     expect(o1.isPrototypeOf(o2)).to.be.true;
     const trapped = proxyState(o2);
     expect(o1.isPrototypeOf(trapped.state)).to.be.true;
+  });
+
+  it('handles dots in names', () => {
+    const o1 = {
+      'test.object.1': 1
+    };
+    const o2 = {
+      'test.object.2': 2
+    };
+    const trapped = proxyState(o1);
+    expect(trapped.state['test.object.1']).to.be.equal(1);
+    expect(trapped.affected).not.to.be.deep.equal(['.test.object.1']);
+    expect(unescapeKey(trapped.affected[0])).to.be.equal('.test.object.1');
+    expect(proxyEqual(o1, o2, trapped.affected)).to.be.equal(false);
   });
 
   it('detect self', () => {

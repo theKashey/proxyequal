@@ -1,3 +1,5 @@
+/* eslint-disable no-control-regex */
+
 import {str as crc32_str} from "crc-32";
 
 import {getCollectionHandlers, shouldInstrument} from "./shouldInstrument";
@@ -5,6 +7,7 @@ import {weakMemoizeArray} from "./weakMemoize";
 import {EDGE, memoizedBuildTrie} from "./objectTrie";
 import {addDiffer, resetDiffers} from "./differs";
 import {proxyPolyfill} from './proxy-polyfill';
+import {escapeKey, unescapeKey} from "./escapeKey";
 
 const hasProxy = typeof Proxy !== 'undefined';
 const ProxyConstructor = hasProxy ? Proxy : proxyPolyfill();
@@ -98,7 +101,7 @@ export function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, contr
           if (nextItem.done && !nextItem.value) {
             return;
           }
-          return proxyValue(subKey, nextItem.value)
+          return proxyValue(subKey, subKey, nextItem.value)
         }
       };
     };
@@ -110,8 +113,8 @@ export function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, contr
     }
   };
 
-  const proxyValue = (key, value) => {
-    const thisId = report(suffix, key);
+  const proxyValue = (key, reportValue, value) => {
+    const thisId = report(suffix, reportValue);
     const type = typeof value;
 
 
@@ -122,9 +125,9 @@ export function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, contr
     if (hasCollectionHandlers) {
       switch (key) {
         case 'get':
-          return key => proxyValue(key, state.get(key));
+          return key => proxyValue(key, escapeKey(key), state.get(key));
         case 'has':
-          return key => proxyValue(key, state.has(key));
+          return key => proxyValue(key, escapeKey(key), state.has(key));
         case 'keys':
           return () => state.keys();
         case 'values':
@@ -173,7 +176,7 @@ export function proxyfy(state, report, suffix = '', fingerPrint, ProxyMap, contr
       }
 
       if (typeof prop === 'string') {
-        return proxyValue(prop, storedValue);
+        return proxyValue(prop, escapeKey(prop), storedValue);
       }
 
       return storedValue;
@@ -249,7 +252,7 @@ const memoizedCollectValuables = weakMemoizeArray(collectValuables);
 const get = (target, path) => {
   let result = target;
   for (let i = 1; i < path.length && result; ++i) {
-    const key = path[i];
+    const key = unescapeKey(path[i]);
     if (key[0] === '!') {
       if (key === objectKeysMarker) {
         return Object.keys(result).map(crc32_str).reduce((acc, x) => acc ^ x, 0);
