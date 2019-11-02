@@ -36,6 +36,9 @@ const handlers = {
 const globalObj = typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {};
 
 export function shouldInstrument({constructor}) {
+  if(!constructor) {
+    return true;
+  }
   const name = constructor.name;
   const isBuiltIn = (
     typeof constructor === 'function' &&
@@ -45,4 +48,4 @@ export function shouldInstrument({constructor}) {
   return !isBuiltIn || handlers.hasOwnProperty(name);
 }
 
-export const getCollectionHandlers = ({constructor}) => handlers[constructor.name];
+export const getCollectionHandlers = ({constructor}) => constructor && handlers[constructor.name];

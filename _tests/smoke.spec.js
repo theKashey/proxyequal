@@ -332,6 +332,14 @@ describe('proxy', () => {
     expect(proxyEqual(o1, o2, trapped.affected)).to.be.equal(false);
   });
 
+  it('handles orphan objects', () => {
+    const obj = Object.create(null);
+    obj.field=42;
+    const trapped = proxyState(obj);
+    expect(trapped.state.field).to.be.equal(42);
+    expect(trapped.affected).to.be.deep.equal(['.field']);
+  });
+
   it('detect self', () => {
     const A = {a: 1};
     const B = proxyState(A).state;
