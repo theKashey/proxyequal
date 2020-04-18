@@ -4,12 +4,15 @@ const dotReplacement = String.fromCharCode(1);
 // let escapeRefCount = 0;
 // const escapeReference = new WeakMap();
 
+const unescapeRegexp = /\u0001/g;
+const dotRegexp = /\./g;
+const DOT_CHAR = '.'
+
 export const unescapeKey = (key) => {
-  return key.replace(/\u0001/g, '.');
+  return key.replace(unescapeRegexp, DOT_CHAR);
 };
 
 export const escapeKey = (key) => {
-  const type = typeof key;
   // if(type!=="string" || type!=="number"){
   //   const ref = escapeReference.get(key);
   //   if(ref) {
@@ -21,9 +24,9 @@ export const escapeKey = (key) => {
   //
   //   return keyCode
   // }
-  if (type === "number") {
+  if (typeof key === "number") {
     return key;
   }
 
-  return String(key).replace(/\./g, dotReplacement);
+  return String(key).replace(dotRegexp, dotReplacement);
 };
